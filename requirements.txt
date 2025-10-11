@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+opencv-python
+deepface
+numpy
+requests
+streamlit
+flask-cors
