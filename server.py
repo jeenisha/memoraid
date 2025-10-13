@@ -1,84 +1,89 @@
+# server.py
 from fastapi import FastAPI, UploadFile, Form, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+import shutil, os, cv2, pathlib
 
-import shutil, os, cv2
 from main_logic import face_logic, reminder_logic
 
 app = FastAPI(title="Memoraid API")
 
-# ----------------- Static & Templates -----------------
+# static + templates
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# ----------------- Home -----------------
 @app.get("/")
 def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-# ----------------- Face Routes -----------------
+
+# Recognize: receives a single image file (from webcam capture or upload)
 @app.post("/recognize")
 async def recognize(file: UploadFile):
     try:
-        # Save uploaded frame temporarily
-        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
-        with open(file_path, "wb") as buffer:
+        temp_path = os.path.join(UPLOAD_FOLDER, file.filename)
+        with open(temp_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        # Read frame
-        frame = cv2.imread(file_path)
-        os.remove(file_path)  # cleanup temp upload
+        frame = cv2.imread(temp_path)
+        os.remove(temp_path)
 
-        # Recognize faces
-        recognized_faces = face_logic.recognize_faces(frame, return_info=True)
-        return JSONResponse({"status": "success", "faces": recognized_faces})
+        faces = face_logic.recognize_faces(frame, return_info=True)
+        return JSONResponse({"status": "success", "faces": faces})
     except Exception as e:
         return JSONResponse({"status": "error", "message": str(e)})
 
-@app.post("/add_face")
-async def add_face(file: UploadFile = None, name: str = Form(...), relation: str = Form(...)):
-    try:
-        if not file:
-            return JSONResponse({"status": "error", "message": "No image uploaded"})
 
-        # Save uploaded image temporarily
-        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
-        with open(file_path, "wb") as buffer:
+# Add person: accepts a file (blob from camera or uploaded image) plus name & relation
+@app.post("/add_person")
+async def add_person(file: UploadFile = None, name: str = Form(...), relation: str = Form(...)):
+    try:
+        if not name or not relation:
+            return JSONResponse({"status": "error", "message": "Name and relation required"})
+
+        if not file:
+            return JSONResponse({"status": "error", "message": "Image file required"})
+
+        temp_path = os.path.join(UPLOAD_FOLDER, file.filename)
+        with open(temp_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        # Add face to faces folder and update face_db.json
-        result = face_logic.add_person_from_file(file_path, name, relation)
-
-        # Cleanup temp upload
-        os.remove(file_path)
-
+        result = face_logic.add_person_from_file(temp_path, name, relation)
         return JSONResponse(result)
     except Exception as e:
         return JSONResponse({"status": "error", "message": str(e)})
 
-# ----------------- Reminder Routes -----------------
+
+# Reminders: keep same CRUD behavior (load/add/edit/delete)
 @app.get("/get_reminders")
 def get_reminders():
-    try:
-        data = reminder_logic.load_reminders()
-        return JSONResponse(data)
-    except Exception as e:
-        return JSONResponse({"status": "error", "message": str(e)})
+    return reminder_logic.load_reminders()
+
 
 @app.post("/add_reminder")
-async def add_reminder(user: str = Form(...), time: str = Form(...), message: str = Form(...)):
+def add_reminder(user: str = Form(...), time: str = Form(...), message: str = Form(...)):
     try:
         reminder_logic.add_reminder(user, time, message)
         return JSONResponse({"status": "success", "message": "Reminder added"})
     except Exception as e:
         return JSONResponse({"status": "error", "message": str(e)})
 
+
+@app.post("/edit_reminder")
+def edit_reminder(user: str = Form(...), index: int = Form(...), new_time: str = Form(None), new_message: str = Form(None)):
+    try:
+        reminder_logic.edit_reminder(user, index, new_time, new_message)
+        return JSONResponse({"status": "success", "message": "Reminder edited"})
+    except Exception as e:
+        return JSONResponse({"status": "error", "message": str(e)})
+
+
 @app.post("/delete_reminder")
-async def delete_reminder(user: str = Form(...), index: int = Form(...)):
+def delete_reminder(user: str = Form(...), index: int = Form(...)):
     try:
         reminder_logic.delete_reminder(user, index)
         return JSONResponse({"status": "success", "message": "Reminder deleted"})

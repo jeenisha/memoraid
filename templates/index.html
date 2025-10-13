@@ -1,77 +1,72 @@
+<!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Memoraid</title>
-    <link rel="stylesheet" href="/static/style.css">
-    <style>
-        video { max-width: 400px; border: 1px solid #333; margin: 10px 0; }
-        canvas { display: none; }
-        .face-card { border: 1px solid #ccc; padding: 5px; margin: 5px; display: inline-block; width: 150px; text-align: center; }
-        .detected-entry { margin: 5px 0; }
-        .conf { font-size: 0.9em; color: gray; }
-        .reminder-item { margin: 5px 0; }
-    </style>
+  <meta charset="utf-8" />
+  <title>Memoraid Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
-    <h1>Memoraid</h1>
+  <h1>🧠 Memoraid - Dashboard</h1>
 
-    <!-- ================= Add Face ================= -->
-    <section>
-        <h2>Add Face</h2>
-        <input type="text" id="face-name" placeholder="Name">
-        <input type="text" id="face-relation" placeholder="Relation">
-        <br><br>
-        <input type="file" id="face-file" accept="image/*">
-        <button onclick="addFaceFile()">Add Face (File)</button>
-        <br><br>
-        <button onclick="openAddFaceWebcam()">Open Webcam</button>
-        <button onclick="addFace()">Add Face (Webcam)</button>
-        <br>
-        <video id="add-face-video" autoplay></video>
-        <canvas id="add-face-canvas"></canvas>
-        <div id="added-faces"></div>
-    </section>
+  <!-- Recognize Person -->
+  <section class="card">
+    <h2>Recognize Person</h2>
+    <video id="rec-video" autoplay playsinline></video>
+    <canvas id="rec-canvas" style="display:none;"></canvas>
 
-    <hr>
+    <div class="controls">
+      <button id="rec-start">Start Detection</button>
+      <button id="rec-capture">Capture</button>
+      <button id="rec-stop">Stop Detection</button>
+    </div>
 
-    <!-- ================= Recognize Face ================= -->
-    <section>
-        <h2>Recognize Face</h2>
-        <input type="file" id="recognize-file" accept="image/*">
-        <button onclick="recognizeFaceFile()">Recognize (File)</button>
-        <br><br>
-        <button onclick="recognizeFaceWebcam()">Open Webcam for Recognition</button>
-        <video id="recognize-video" autoplay></video>
-        <canvas id="recognize-canvas"></canvas>
-        <div id="recognized-faces"></div>
-    </section>
+    <div id="rec-result" class="result-box">No result yet.</div>
+  </section>
 
-    <hr>
+  <!-- Add Person -->
+  <section class="card">
+    <h2>Add Person</h2>
 
-    <!-- ================= Live Detection ================= -->
-    <section>
-        <h2>Live Face Detection</h2>
-        <button onclick="startFaceDetection()">Start Detection</button>
-        <button onclick="stopFaceDetection()">Stop Detection</button>
-        <br>
-        <video id="detect-video" autoplay></video>
-        <canvas id="detect-canvas"></canvas>
-        <div id="detected-faces"></div>
-    </section>
+    <div class="sub">
+      <h3>Upload Image</h3>
+      <input id="upload-name" placeholder="Name" />
+      <input id="upload-relation" placeholder="Relation" />
+      <input id="upload-file" type="file" accept="image/*" />
+      <button id="upload-add">Add Person (Upload)</button>
+    </div>
 
-    <hr>
+    <hr/>
 
-    <!-- ================= Reminders ================= -->
-    <section>
-        <h2>Reminders</h2>
-        <input type="text" id="reminder-user" placeholder="User">
-        <input type="time" id="reminder-time">
-        <input type="text" id="reminder-message" placeholder="Message">
-        <button onclick="addReminder()">Add Reminder</button>
-        <div id="reminder-list"></div>
-    </section>
+    <div class="sub">
+      <h3>Add via Camera</h3>
+      <video id="add-video" autoplay playsinline style="display:none;"></video>
+      <canvas id="add-canvas" style="display:none;"></canvas>
 
-    <script src="/static/script.js"></script>
+      <input id="cam-name" placeholder="Name" />
+      <input id="cam-relation" placeholder="Relation" />
+      <div class="controls">
+        <button id="add-open">Open Camera</button>
+        <button id="add-capture">Capture Image</button>
+        <button id="add-close">Close Camera</button>
+        <button id="add-submit">Add Person (From Camera)</button>
+      </div>
+
+      <div id="added-preview" class="result-box">No preview</div>
+    </div>
+  </section>
+
+  <!-- Reminders -->
+  <section class="card">
+    <h2>Reminders</h2>
+    <input id="rem-user" placeholder="User" />
+    <input id="rem-time" type="time" />
+    <input id="rem-message" placeholder="Message" />
+    <button id="rem-add">Add Reminder</button>
+
+    <div id="rem-list" class="result-box"></div>
+  </section>
+
+  <script src="/static/script.js"></script>
 </body>
 </html>

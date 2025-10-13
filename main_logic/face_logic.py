@@ -1,136 +1,133 @@
-import cv2
+# main_logic/face_logic.py
 import os
 import json
+import cv2
 import numpy as np
 from deepface import DeepFace
-from gtts import gTTS
-import subprocess
 
-# ----------------- Paths -----------------
-FACES_FOLDER = os.path.join(os.path.dirname(__file__), "../faces")
-DB_FILE = os.path.join(os.path.dirname(__file__), "faces_db.json")
+# Paths (adjust to absolute)
+BASE_DIR = os.path.dirname(__file__)
+FACES_FOLDER = os.path.abspath(os.path.join(BASE_DIR, "..", "faces"))
+DB_FILE = os.path.join(BASE_DIR, "faces_db.json")
 
-# Ensure folders exist
 os.makedirs(FACES_FOLDER, exist_ok=True)
 if not os.path.exists(DB_FILE):
     with open(DB_FILE, "w", encoding="utf-8") as f:
-        json.dump({}, f)
+        json.dump({}, f, indent=4, ensure_ascii=False)
 
-# Load face database
+# load db
 with open(DB_FILE, "r", encoding="utf-8") as f:
     face_db = json.load(f)
 
 
-# ----------------- TTS (Optional) -----------------
-def speak_text(text, lang="en"):
-    """Text-to-speech for local testing"""
-    try:
-        tts = gTTS(text=text, lang=lang)
-        filename = "temp_audio.mp3"
-        tts.save(filename)
-        subprocess.run(
-            ["ffplay", "-nodisp", "-autoexit", filename],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        os.remove(filename)
-    except Exception as e:
-        print("TTS Error:", e)
+def _save_db():
+    with open(DB_FILE, "w", encoding="utf-8") as f:
+        json.dump(face_db, f, indent=4, ensure_ascii=False)
 
 
-# ----------------- Normalize -----------------
-def normalize_name(s):
-    """Normalize filenames for matching"""
+def normalize_name(s: str):
     return os.path.splitext(s)[0].replace(" ", "").replace("_", "").lower()
 
 
-# ----------------- Add Person from File -----------------
-def add_person_from_file(file_path, name, relation):
+def add_person_from_file(file_path: str, name: str, relation: str):
     """
-    Add a person from a given image file.
-    Saves image to faces folder and updates JSON database.
+    Move uploaded file into faces folder and add entry to faces_db.json
+    file_path: temporary uploaded path (server uploads/)
     """
     try:
+        if not os.path.exists(file_path):
+            return {"status": "error", "message": "Uploaded file not found"}
+
         filename = os.path.basename(file_path)
-        save_path = os.path.join(FACES_FOLDER, filename)
-        # Copy the uploaded file to faces folder
-        os.replace(file_path, save_path)
+        # avoid name collisions: if exists, append timestamp
+        dest = os.path.join(FACES_FOLDER, filename)
+        if os.path.exists(dest):
+            base, ext = os.path.splitext(filename)
+            filename = f"{base}_{int(__import__('time').time())}{ext}"
+            dest = os.path.join(FACES_FOLDER, filename)
 
-        # Update database
+        # move file
+        os.replace(file_path, dest)
+
+        # update db
         face_db[filename] = {"name": name, "relation": relation}
-        with open(DB_FILE, "w", encoding="utf-8") as f:
-            json.dump(face_db, f, indent=4, ensure_ascii=False)
+        _save_db()
 
-        return {"status": "success", "message": f"{name} added successfully!"}
+        return {"status": "success", "message": f"{name} added as {filename}"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
 
-# ----------------- Recognize Faces -----------------
 def recognize_faces(frame, return_info=False):
     """
-    Recognize faces from a given frame.
-    Returns a list of recognized face details with confidence.
+    Input: OpenCV frame (BGR)
+    Output: list of {name, relation, confidence, status}
     """
-    results_list = []
+    results = []
+    try:
+        # small brightness adjust (optional)
+        frame_adj = cv2.convertScaleAbs(frame, alpha=1.1, beta=10)
 
-    # Adjust brightness slightly
-    frame = cv2.convertScaleAbs(frame, alpha=1.2, beta=30)
+        # DeepFace.extract_faces expects RGB or array; passing frame_adj works
+        detections = DeepFace.extract_faces(img_path=frame_adj, detector_backend="opencv", enforce_detection=False)
 
-    # Detect faces
-    detections = DeepFace.extract_faces(frame, detector_backend="opencv", enforce_detection=False)
+        if not detections:
+            return [] if return_info else {"faces": []}
 
-    for i, face_obj in enumerate(detections):
-        face_img = face_obj["face"]
-        temp_path = f"temp_face_{i}.jpg"
-        cv2.imwrite(temp_path, (face_img * 255).astype(np.uint8))
+        for i, face_obj in enumerate(detections):
+            face_img = face_obj.get("face")
+            if face_img is None:
+                results.append({"status": "unknown", "name": "Unknown", "relation": "", "confidence": 0.0})
+                continue
 
-        recognized = False
-        best_confidence = 0.0
-        name = relation = "Unknown"
+            # save temp face (face_img may be floats 0..1)
+            temp_path = f"temp_face_{i}.jpg"
+            arr = (face_img * 255).astype(np.uint8) if (face_img.dtype == np.float32 or face_img.max() <= 1.0) else face_img
+            cv2.imwrite(temp_path, arr)
 
-        try:
-            # Match with face database
-            result = DeepFace.find(temp_path, db_path=FACES_FOLDER, enforce_detection=False)
-            if isinstance(result, list) and len(result) > 0 and not result[0].empty:
-                top_row = result[0].iloc[0]
-                identity_filename = os.path.basename(top_row["identity"])
-                best_confidence = float(1 - top_row["distance"])  # Convert distance → confidence approx.
+            # search DB
+            try:
+                res = DeepFace.find(img_path=temp_path, db_path=FACES_FOLDER, enforce_detection=False)
+                if isinstance(res, list) and len(res) > 0 and not res[0].empty:
+                    top = res[0].iloc[0]
+                    matched_file = os.path.basename(top["identity"])
+                    distance = float(top.get("distance", 0.0))
+                    confidence = max(0.0, 1.0 - distance) if distance >= 0 else 0.0
 
-                # Exact filename match
-                if identity_filename in face_db:
-                    details = face_db[identity_filename]
-                    name = details.get("name", "Unknown")
-                    relation = details.get("relation", "Unknown")
-                    recognized = True
+                    # find matching record in face_db
+                    matched_key = None
+                    if matched_file in face_db:
+                        matched_key = matched_file
+                    else:
+                        # try normalized match
+                        matched_key = next((k for k in face_db.keys() if normalize_name(k) == normalize_name(matched_file)), None)
+
+                    if matched_key:
+                        details = face_db[matched_key]
+                        results.append({
+                            "status": "recognized",
+                            "name": details.get("name", "Unknown"),
+                            "relation": details.get("relation", ""),
+                            "confidence": confidence
+                        })
+                    else:
+                        results.append({
+                            "status": "recognized",
+                            "name": os.path.splitext(matched_file)[0],
+                            "relation": "",
+                            "confidence": confidence
+                        })
                 else:
-                    # Fallback: normalize and match
-                    key_match = next(
-                        (k for k in face_db.keys() if normalize_name(k) == normalize_name(identity_filename)),
-                        None
-                    )
-                    if key_match:
-                        details = face_db[key_match]
-                        name = details.get("name", "Unknown")
-                        relation = details.get("relation", "Unknown")
-                        recognized = True
-        except Exception as e:
-            print("Recognition error:", e)
+                    results.append({"status": "unknown", "name": "Unknown", "relation": "", "confidence": 0.0})
+            except Exception as e:
+                results.append({"status": "error", "message": str(e), "name": "Unknown", "relation": "", "confidence": 0.0})
+            finally:
+                try:
+                    os.remove(temp_path)
+                except Exception:
+                    pass
 
-        results_list.append({
-            "name": name,
-            "relation": relation,
-            "confidence": best_confidence,
-            "status": "recognized" if recognized else "unknown"
-        })
+    except Exception as e:
+        return [] if return_info else {"faces": []}
 
-        # Cleanup temporary file
-        try:
-            os.remove(temp_path)
-        except Exception:
-            pass
-
-    if return_info:
-        return results_list
-    else:
-        return {"faces": results_list}
+    return results if return_info else {"faces": results}
