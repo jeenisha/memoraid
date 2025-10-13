@@ -1,8 +1,23 @@
-fastapi
-uvicorn
-opencv-python
-deepface
-numpy
-requests
-streamlit
-flask-cors
+# Core packages
+numpy==1.23.5
+opencv-python==4.7.0.72
+Pillow==9.5.0
+scipy==1.10.1
+
+# DeepFace for face recognition
+deepface==0.0.88
+
+# Text-to-Speech
+gTTS==2.3.2
+playsound==1.3.0
+
+# Web backend
+fastapi==0.111.0
+uvicorn==0.23.2
+python-multipart==0.0.8
+
+# Optional for reminders or scheduling
+APScheduler==3.10.1
+
+# TensorFlow backend for DeepFace
+tensorflow==2.12.0

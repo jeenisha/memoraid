@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Memoraid Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script defer src="/static/script.js"></script>
+</head>
+<body class="bg-gray-100 p-6">
+  <h1 class="text-3xl font-bold mb-6">Memoraid Dashboard</h1>
+
+  <!-- Add Face -->
+  <div class="card">
+    <h2>Add Face</h2>
+    <input type="text" id="face-name" placeholder="Name">
+    <input type="text" id="face-relation" placeholder="Relation">
+    <input type="file" id="face-file">
+    <button onclick="addFace()">Add Face</button>
+  </div>
+
+  <!-- Recognize Face -->
+  <div class="card">
+    <h2>Recognize Face</h2>
+    <input type="file" id="recognize-file">
+    <button onclick="recognizeFace()">Recognize</button>
+  </div>
+
+  <!-- Reminders -->
+  <div class="card">
+    <h2>Reminders</h2>
+    <input type="text" id="reminder-user" placeholder="User">
+    <input type="time" id="reminder-time">
+    <input type="text" id="reminder-message" placeholder="Message">
+    <button onclick="addReminder()">Add Reminder</button>
+
+    <div id="reminder-list" class="mt-4"></div>
+  </div>
+</body>
+</html>
