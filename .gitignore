@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.env
+.venv/
+venv/
+ENV/
+env/
+build/
+dist/
+
+# Face and reminder data
+main_logic/faces/
+main_logic/faces_db.json
+main_logic/reminders.json
+
+# IDE settings
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Streamlit and FastAPI caches
+.streamlit/
+*.log
