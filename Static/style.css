@@ -1,0 +1,131 @@
+/* ================= Global ================= */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f7f7f7;
+    margin: 20px;
+    color: #333;
+}
+
+h1, h2 {
+    color: #2c3e50;
+}
+
+section {
+    background-color: #fff;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+/* ================= Buttons ================= */
+button {
+    background-color: #3498db;
+    color: #fff;
+    border: none;
+    padding: 8px 15px;
+    margin: 5px 0;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+button:hover {
+    background-color: #2980b9;
+}
+
+/* ================= Inputs ================= */
+input[type="text"], input[type="file"], input[type="time"] {
+    padding: 6px 10px;
+    margin: 5px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+}
+
+/* ================= Video ================= */
+video {
+    border-radius: 8px;
+    border: 2px solid #3498db;
+    max-width: 400px;
+    margin-top: 10px;
+}
+
+/* ================= Canvas ================= */
+canvas {
+    display: none;
+}
+
+/* ================= Face Cards ================= */
+.face-card {
+    display: inline-block;
+    text-align: center;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 8px;
+    margin: 5px;
+    width: 140px;
+    background-color: #fafafa;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.face-card img {
+    width: 100%;
+    height: auto;
+    border-radius: 5px;
+}
+
+.face-card h4 {
+    margin: 5px 0 2px 0;
+    font-size: 14px;
+    color: #2c3e50;
+}
+
+.face-card p {
+    margin: 2px 0;
+    font-size: 12px;
+    color: #7f8c8d;
+}
+
+.conf {
+    font-size: 11px;
+    color: #16a085;
+}
+
+/* ================= Detected Entries ================= */
+.detected-entry {
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+/* ================= Reminders ================= */
+.reminder-item {
+    margin: 5px 0;
+    padding: 5px 10px;
+    border-radius: 5px;
+    background-color: #ecf0f1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.reminder-item button {
+    background-color: #e74c3c;
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+.reminder-item button:hover {
+    background-color: #c0392b;
+}
+
+/* ================= Responsive ================= */
+@media screen and (max-width: 600px) {
+    video {
+        max-width: 100%;
+    }
+    .face-card {
+        width: 45%;
+        margin: 5px 2%;
+    }
+}

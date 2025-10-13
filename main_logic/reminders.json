@@ -1,18 +1,21 @@
 {
     "Jeenisha": [
         {
-            "time": "09:30",
-            "message": "Take your morning medicine"
-        },
-        {
             "time": "21:00",
             "message": "Go for a walk"
         }
     ],
-    "Mom": [
+    "Mom": [],
+    "Ankita": [
         {
-            "time": "14:00",
-            "message": "Call the doctor"
+            "time": "01:12",
+            "message": "Take nap"
+        }
+    ],
+    "divya": [
+        {
+            "time": "20:30",
+            "message": "Take medicine"
         }
     ]
 }
