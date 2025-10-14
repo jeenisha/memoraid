@@ -3,6 +3,10 @@
         {
             "time": "21:00",
             "message": "Go for a walk"
+        },
+        {
+            "time": "16:00",
+            "message": "Meet me"
         }
     ],
     "Mom": [],
@@ -12,5 +16,11 @@
             "message": "Take nap"
         }
     ],
-    "divya": []
+    "divya": [],
+    "Divya": [
+        {
+            "time": "04:44",
+            "message": "Good Morning"
+        }
+    ]
 }
