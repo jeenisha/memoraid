@@ -10,16 +10,7 @@
         {
             "time": "01:12",
             "message": "Take nap"
-        },
-        {
-            "time": "15:29",
-            "message": "Drink Water"
         }
     ],
-    "divya": [
-        {
-            "time": "20:30",
-            "message": "Take medicine"
-        }
-    ]
+    "divya": []
 }

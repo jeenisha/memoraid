@@ -1,72 +1,87 @@
-<!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Memoraid Dashboard</title>
-  <link rel="stylesheet" href="/static/style.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memoraid - Dementia Assistant</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <h1>🧠 Memoraid - Dashboard</h1>
+    <header>
+        <h1>Memoraid - Dementia Assistant</h1>
+    </header>
 
-  <!-- Recognize Person -->
-  <section class="card">
-    <h2>Recognize Person</h2>
-    <video id="rec-video" autoplay playsinline></video>
-    <canvas id="rec-canvas" style="display:none;"></canvas>
+    <main>
+        <!-- Section 1: Recognize Person -->
+        <section id="recognize-person">
+            <h2>Recognize Person</h2>
+            <button id="startDetectionBtn">Start Detection</button>
+            <div id="detectionArea" style="display: none;">
+                <video id="webcamFeed" width="640" height="480" autoplay></video>
+                <button id="captureFaceBtn">Capture</button>
+                <button id="stopDetectionBtn">Stop Detection</button>
+            </div>
+            <div id="recognizedPersonDetails" class="result-box">
+                <h3>Recognized Person Details:</h3>
+                <p>Name: <span id="recognizedName">N/A</span></p>
+                <p>Relation: <span id="recognizedRelation">N/A</span></p>
+            </div>
+        </section>
 
-    <div class="controls">
-      <button id="rec-start">Start Detection</button>
-      <button id="rec-capture">Capture</button>
-      <button id="rec-stop">Stop Detection</button>
-    </div>
+        <!-- Section 2: Add Person -->
+        <section id="add-person">
+            <h2>Add Person</h2>
 
-    <div id="rec-result" class="result-box">No result yet.</div>
-  </section>
+            <h3>Upload Image</h3>
+            <form id="uploadImageForm" enctype="multipart/form-data">
+                <input type="file" id="uploadFileInput" name="file" accept="image/*" required>
+                <input type="text" id="uploadNameInput" name="name" placeholder="Name" required>
+                <input type="text" id="uploadRelationInput" name="relation" placeholder="Relation" required>
+                <button type="submit">Add Person (Upload)</button>
+            </form>
 
-  <!-- Add Person -->
-  <section class="card">
-    <h2>Add Person</h2>
+            <h3>Use Camera</h3>
+            <button id="startAddCameraBtn">Use Camera</button>
+            <div id="addCameraArea" style="display: none;">
+                <video id="addWebcamFeed" width="640" height="480" autoplay></video>
+                <button id="captureAddFaceBtn">Capture Image</button>
+                <button id="stopAddCameraBtn">Stop Camera</button>
+                <img id="capturedAddImagePreview" src="#" alt="Captured Image" style="display:none; max-width: 300px; max-height: 200px; border: 1px solid #ccc; margin-top: 10px;">
+                <form id="addFromCameraForm" style="margin-top: 10px;">
+                    <input type="hidden" id="addCameraImageData" name="image_data_url">
+                    <input type="text" id="addCameraNameInput" name="name" placeholder="Name" required>
+                    <input type="text" id="addCameraRelationInput" name="relation" placeholder="Relation" required>
+                    <button type="submit">Add Person (Camera)</button>
+                </form>
+            </div>
+        </section>
 
-    <div class="sub">
-      <h3>Upload Image</h3>
-      <input id="upload-name" placeholder="Name" />
-      <input id="upload-relation" placeholder="Relation" />
-      <input id="upload-file" type="file" accept="image/*" />
-      <button id="upload-add">Add Person (Upload)</button>
-    </div>
+        <!-- Section 3: Reminders -->
+        <section id="reminders">
+            <h2>Reminders</h2>
 
-    <hr/>
+            <h3>Add New Reminder</h3>
+            <form id="addReminderForm">
+                <select id="reminderPersonSelect" name="person_name" required>
+                    <option value="">Select Person</option>
+                    <!-- Options populated by JS -->
+                </select>
+                <input type="time" id="reminderTimeInput" name="time" required>
+                <input type="text" id="reminderMessageInput" name="message" placeholder="Reminder Message" required>
+                <button type="submit">Add Reminder</button>
+            </form>
 
-    <div class="sub">
-      <h3>Add via Camera</h3>
-      <video id="add-video" autoplay playsinline style="display:none;"></video>
-      <canvas id="add-canvas" style="display:none;"></canvas>
+            <h3>All Reminders</h3>
+            <div id="remindersList">
+                <!-- Reminders will be listed here by JavaScript -->
+            </div>
+        </section>
+    </main>
 
-      <input id="cam-name" placeholder="Name" />
-      <input id="cam-relation" placeholder="Relation" />
-      <div class="controls">
-        <button id="add-open">Open Camera</button>
-        <button id="add-capture">Capture Image</button>
-        <button id="add-close">Close Camera</button>
-        <button id="add-submit">Add Person (From Camera)</button>
-      </div>
+    <footer>
+        <p>&copy; 2023 Memoraid. All rights reserved.</p>
+    </footer>
 
-      <div id="added-preview" class="result-box">No preview</div>
-    </div>
-  </section>
-
-  <!-- Reminders -->
-  <section class="card">
-    <h2>Reminders</h2>
-    <input id="rem-user" placeholder="User" />
-    <input id="rem-time" type="time" />
-    <input id="rem-message" placeholder="Message" />
-    <button id="rem-add">Add Reminder</button>
-
-    <div id="rem-list" class="result-box"></div>
-  </section>
-
-  <script src="/static/script.js"></script>
+    <script src="/static/script.js"></script>
 </body>
 </html>
