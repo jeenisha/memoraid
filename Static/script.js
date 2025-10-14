@@ -1,374 +1,239 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // --- DOM Elements ---
-    const webcamFeed = document.getElementById('webcamFeed');
-    const addWebcamFeed = document.getElementById('addWebcamFeed');
+// static/script.js
 
-    const startDetectionBtn = document.getElementById('startDetectionBtn');
-    const captureFaceBtn = document.getElementById('captureFaceBtn');
-    const stopDetectionBtn = document.getElementById('stopDetectionBtn');
-    const detectionArea = document.getElementById('detectionArea');
-    const recognizedNameSpan = document.getElementById('recognizedName');
-    const recognizedRelationSpan = document.getElementById('recognizedRelation');
+// --- Recognize section ---
+const recVideo = document.getElementById("rec-video");
+const recCanvas = document.getElementById("rec-canvas");
+const recStart = document.getElementById("rec-start");
+const recCapture = document.getElementById("rec-capture");
+const recStop = document.getElementById("rec-stop");
+const recResult = document.getElementById("rec-result");
+let recStream = null;
 
-    const startAddCameraBtn = document.getElementById('startAddCameraBtn');
-    const addCameraArea = document.getElementById('addCameraArea');
-    const captureAddFaceBtn = document.getElementById('captureAddFaceBtn');
-    const stopAddCameraBtn = document.getElementById('stopAddCameraBtn');
-    const capturedAddImagePreview = document.getElementById('capturedAddImagePreview');
-    const addCameraImageDataInput = document.getElementById('addCameraImageData');
-    const addCameraNameInput = document.getElementById('addCameraNameInput');
-    const addCameraRelationInput = document.getElementById('addCameraRelationInput');
-    const addFromCameraForm = document.getElementById('addFromCameraForm');
+async function openRecCam() {
+  if (recStream) return;
+  recStream = await navigator.mediaDevices.getUserMedia({ video: true });
+  recVideo.srcObject = recStream;
+}
 
-    const uploadImageForm = document.getElementById('uploadImageForm');
+function closeRecCam() {
+  if (!recStream) return;
+  recStream.getTracks().forEach(t => t.stop());
+  recVideo.srcObject = null;
+  recStream = null;
+}
 
-    const addReminderForm = document.getElementById('addReminderForm');
-    const reminderPersonSelect = document.getElementById('reminderPersonSelect');
-    const remindersListDiv = document.getElementById('remindersList');
+recStart.onclick = async () => {
+  try {
+    await openRecCam();
+    recResult.textContent = "Camera opened. Click Capture to take one frame.";
+  } catch (e) {
+    alert("Could not open camera: " + e.message);
+  }
+};
 
-    let currentStream = null; // To manage webcam streams
+recStop.onclick = () => {
+  closeRecCam();
+  recResult.textContent = "Camera closed.";
+};
 
-    // --- Webcam Helper Functions ---
-    async function startWebcam(videoElement) {
-        if (currentStream) stopWebcam(); // Stop any existing stream first
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            videoElement.srcObject = stream;
-            currentStream = stream;
-            return true;
-        } catch (err) {
-            console.error("Error accessing webcam: ", err);
-            alert("Could not access webcam. Please ensure it's connected and permissions are granted.");
-            return false;
-        }
-    }
+recCapture.onclick = async () => {
+  if (!recStream) return alert("Start the camera first");
+  recCanvas.width = recVideo.videoWidth;
+  recCanvas.height = recVideo.videoHeight;
+  const ctx = recCanvas.getContext("2d");
+  ctx.drawImage(recVideo, 0, 0, recCanvas.width, recCanvas.height);
 
-    function stopWebcam() {
-        if (currentStream) {
-            currentStream.getTracks().forEach(track => track.stop());
-            currentStream = null;
-        }
-    }
-
-    // --- Section 1: Recognize Person ---
-    startDetectionBtn.addEventListener('click', async () => {
-        if (await startWebcam(webcamFeed)) {
-            detectionArea.style.display = 'block';
-            startDetectionBtn.style.display = 'none';
-            recognizedNameSpan.textContent = 'N/A';
-            recognizedRelationSpan.textContent = 'N/A';
-        }
-    });
-
-    stopDetectionBtn.addEventListener('click', () => {
-        stopWebcam();
-        detectionArea.style.display = 'none';
-        startDetectionBtn.style.display = 'block';
-    });
-
-    captureFaceBtn.addEventListener('click', async () => {
-        if (!webcamFeed.srcObject) {
-            alert("Webcam not active.");
-            return;
-        }
-        
-        const canvas = document.createElement('canvas');
-        canvas.width = webcamFeed.videoWidth;
-        canvas.height = webcamFeed.videoHeight;
-        const context = canvas.getContext('2d');
-        context.drawImage(webcamFeed, 0, 0, canvas.width, canvas.height);
-        const imageDataURL = canvas.toDataURL('image/jpeg');
-
-        try {
-            const response = await fetch('/recognize_face', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image: imageDataURL }),
-            });
-            const data = await response.json();
-
-            if (data.success && data.person) {
-                recognizedNameSpan.textContent = data.person.name;
-                recognizedRelationSpan.textContent = data.person.relation;
+  // convert to blob and send
+  recCanvas.toBlob(async (blob) => {
+    const fd = new FormData();
+    fd.append("file", blob, "capture.jpg");
+    recResult.textContent = "Recognizing...";
+    try {
+      const res = await fetch("/recognize", { method: "POST", body: fd });
+      const data = await res.json();
+      if (data.status === "success") {
+        const faces = data.faces || [];
+        if (faces.length === 0) {
+          recResult.textContent = "No faces detected.";
+        } else {
+          // show first match (or list)
+          recResult.innerHTML = faces.map((f, i) => {
+            if (f.status === "recognized") {
+              return `<div class="match">✅ ${f.name} — ${f.relation} (confidence: ${ (f.confidence || 0).toFixed(2) })</div>`;
+            } else if (f.status === "unknown") {
+              return `<div class="match">❌ Unknown</div>`;
             } else {
-                recognizedNameSpan.textContent = 'Unknown';
-                recognizedRelationSpan.textContent = 'N/A';
-                alert(data.message || "No face recognized.");
+              return `<div class="match">⚠️ ${f.status}</div>`;
             }
-        } catch (error) {
-            console.error('Error recognizing face:', error);
-            alert('An error occurred during face recognition.');
-        } finally {
-            stopWebcam();
-            detectionArea.style.display = 'none';
-            startDetectionBtn.style.display = 'block';
+          }).join("");
         }
-    });
-
-    // --- Section 2: Add Person ---
-
-    // Upload Image Form
-    uploadImageForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const formData = new FormData(uploadImageForm);
-
-        try {
-            const response = await fetch('/add_person', {
-                method: 'POST',
-                body: formData,
-            });
-            const data = await response.json();
-            alert(data.message);
-            if (data.success) {
-                uploadImageForm.reset();
-                populateReminderPersonSelect(); // Refresh person select for reminders
-            }
-        } catch (error) {
-            console.error('Error adding person (upload):', error);
-            alert('An error occurred while adding the person.');
-        }
-    });
-
-    // Use Camera for Add Person - Start Camera
-    startAddCameraBtn.addEventListener('click', async () => {
-        if (await startWebcam(addWebcamFeed)) {
-            addCameraArea.style.display = 'block';
-            startAddCameraBtn.style.display = 'none';
-            capturedAddImagePreview.style.display = 'none';
-            addCameraImageDataInput.value = ''; // Clear previous image data
-            addCameraNameInput.value = ''; // Clear name
-            addCameraRelationInput.value = ''; // Clear relation
-        }
-    });
-
-    // Use Camera for Add Person - Stop Camera
-    stopAddCameraBtn.addEventListener('click', () => {
-        stopWebcam();
-        addCameraArea.style.display = 'none';
-        startAddCameraBtn.style.display = 'block';
-        capturedAddImagePreview.style.display = 'none';
-    });
-
-    // Use Camera for Add Person - Capture Image
-    captureAddFaceBtn.addEventListener('click', () => {
-        if (!addWebcamFeed.srcObject) {
-            alert("Webcam not active.");
-            return;
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = addWebcamFeed.videoWidth;
-        canvas.height = addWebcamFeed.videoHeight;
-        const context = canvas.getContext('2d');
-        context.drawImage(addWebcamFeed, 0, 0, canvas.width, canvas.height);
-        const imageDataURL = canvas.toDataURL('image/png'); 
-
-        capturedAddImagePreview.src = imageDataURL;
-        capturedAddImagePreview.style.display = 'block';
-        addCameraImageDataInput.value = imageDataURL; // Store image data for form submission
-        
-        stopWebcam(); // Stop webcam after capturing
-        addWebcamFeed.srcObject = null; // Clear stream from video element
-    });
-
-    // Use Camera for Add Person - Submit Form
-    addFromCameraForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        if (!addCameraImageDataInput.value) {
-            alert("Please capture an image first.");
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('name', addCameraNameInput.value);
-        formData.append('relation', addCameraRelationInput.value);
-        formData.append('image_data_url', addCameraImageDataInput.value);
-
-        try {
-            const response = await fetch('/add_person', {
-                method: 'POST',
-                body: formData,
-            });
-            const data = await response.json();
-            alert(data.message);
-            if (data.success) {
-                addFromCameraForm.reset();
-                capturedAddImagePreview.style.display = 'none';
-                addCameraArea.style.display = 'none';
-                startAddCameraBtn.style.display = 'block';
-                populateReminderPersonSelect(); // Refresh person select for reminders
-            }
-        } catch (error) {
-            console.error('Error adding person (camera):', error);
-            alert('An error occurred while adding the person.');
-        }
-    });
-    
-    // --- Section 3: Reminders ---
-
-    // Populate Person Select for Reminders
-    async function populateReminderPersonSelect() {
-        reminderPersonSelect.innerHTML = '<option value="">Select Person</option>';
-        try {
-            const response = await fetch('/get_all_people_names'); 
-            const data = await response.json();
-            if (data.success && data.people_names) {
-                data.people_names.sort().forEach(name => { // Sort names alphabetically
-                    const option = document.createElement('option');
-                    option.value = name;
-                    option.textContent = name;
-                    reminderPersonSelect.appendChild(option);
-                });
-            }
-        } catch (error) {
-            console.error('Error populating person select:', error);
-        }
+      } else {
+        recResult.textContent = "Error: " + (data.message || "unknown");
+      }
+    } catch (err) {
+      recResult.textContent = "Recognition error: " + err.message;
+    } finally {
+      // after one capture we close camera as requested
+      closeRecCam();
     }
+  }, "image/jpeg");
+};
 
-    // Add Reminder Form
-    addReminderForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const formData = new FormData(addReminderForm);
+// --- Add person (upload) ---
+document.getElementById("upload-add").onclick = async () => {
+  const name = document.getElementById("upload-name").value.trim();
+  const relation = document.getElementById("upload-relation").value.trim();
+  const fileInput = document.getElementById("upload-file");
 
-        try {
-            const response = await fetch('/add_reminder', {
-                method: 'POST',
-                body: formData,
-            });
-            const data = await response.json();
-            alert(data.message);
-            if (data.success) {
-                addReminderForm.reset();
-                loadRemindersData(); // Refresh reminders list
-            }
-        } catch (error) {
-            console.error('Error adding reminder:', error);
-            alert('An error occurred while adding the reminder.');
-        }
+  if (!name || !relation) return alert("Enter name and relation");
+  if (!fileInput.files || fileInput.files.length === 0) return alert("Choose a file");
+
+  const fd = new FormData();
+  fd.append("name", name);
+  fd.append("relation", relation);
+  fd.append("file", fileInput.files[0]);
+
+  const res = await fetch("/add_person", { method: "POST", body: fd });
+  const data = await res.json();
+  alert(data.message || JSON.stringify(data));
+  // optionally clear inputs
+  fileInput.value = "";
+  document.getElementById("upload-name").value = "";
+  document.getElementById("upload-relation").value = "";
+};
+
+// --- Add person (camera) ---
+const addVideo = document.getElementById("add-video");
+const addCanvas = document.getElementById("add-canvas");
+const addOpen = document.getElementById("add-open");
+const addCapture = document.getElementById("add-capture");
+const addClose = document.getElementById("add-close");
+const addSubmit = document.getElementById("add-submit");
+const addedPreview = document.getElementById("added-preview");
+let addStream = null;
+let addedBlob = null;
+
+addOpen.onclick = async () => {
+  if (addStream) return;
+  try {
+    addStream = await navigator.mediaDevices.getUserMedia({ video: true });
+    addVideo.srcObject = addStream;
+    addVideo.style.display = "block";
+    addedPreview.textContent = "Camera opened. Click Capture Image to take a photo.";
+  } catch (e) {
+    alert("Could not open camera: " + e.message);
+  }
+};
+
+addClose.onclick = () => {
+  if (addStream) {
+    addStream.getTracks().forEach(t => t.stop());
+    addStream = null;
+  }
+  addVideo.style.display = "none";
+  addedPreview.textContent = "Camera closed.";
+};
+
+addCapture.onclick = async () => {
+  if (!addStream) return alert("Open camera first");
+  addCanvas.width = addVideo.videoWidth;
+  addCanvas.height = addVideo.videoHeight;
+  const ctx = addCanvas.getContext("2d");
+  ctx.drawImage(addVideo, 0, 0, addCanvas.width, addCanvas.height);
+
+  addCanvas.toBlob((blob) => {
+    addedBlob = blob;
+    const url = URL.createObjectURL(blob);
+    addedPreview.innerHTML = `<img src="${url}" class="thumb" /> <div>Preview captured image</div>`;
+  }, "image/jpeg");
+};
+
+addSubmit.onclick = async () => {
+  const name = document.getElementById("cam-name").value.trim();
+  const relation = document.getElementById("cam-relation").value.trim();
+  if (!name || !relation) return alert("Enter name and relation");
+  if (!addedBlob) return alert("Capture an image first");
+
+  const fd = new FormData();
+  fd.append("name", name);
+  fd.append("relation", relation);
+  fd.append("file", addedBlob, "cam_capture.jpg");
+
+  const res = await fetch("/add_person", { method: "POST", body: fd });
+  const data = await res.json();
+  alert(data.message || JSON.stringify(data));
+  // clear and close camera
+  addedBlob = null;
+  addClose.onclick();
+  document.getElementById("cam-name").value = "";
+  document.getElementById("cam-relation").value = "";
+  addedPreview.textContent = "No preview";
+};
+
+// --- Reminders: fetch, add, edit, delete ---
+async function fetchReminders() {
+  const res = await fetch("/get_reminders");
+  const data = await res.json();
+  const container = document.getElementById("rem-list");
+  container.innerHTML = "";
+
+  for (const user in data) {
+    data[user].forEach((r, idx) => {
+      const div = document.createElement("div");
+      div.className = "rem-item";
+      div.innerHTML = `<strong>${user}</strong> — ${r.time} — ${r.message}
+        <button class="rem-edit">Edit</button>
+        <button class="rem-delete">Delete</button>`;
+      const editBtn = div.querySelector(".rem-edit");
+      const delBtn = div.querySelector(".rem-delete");
+
+      editBtn.onclick = async () => {
+        const newTime = prompt("New time (HH:MM):", r.time);
+        const newMsg = prompt("New message:", r.message);
+        if (newTime === null && newMsg === null) return;
+        const fd = new FormData();
+        fd.append("user", user);
+        fd.append("index", idx);
+        if (newTime) fd.append("new_time", newTime);
+        if (newMsg) fd.append("new_message", newMsg);
+        const res = await fetch("/edit_reminder", { method: "POST", body: fd });
+        const d = await res.json();
+        alert(d.message || JSON.stringify(d));
+        fetchReminders();
+      };
+
+      delBtn.onclick = async () => {
+        const fd = new FormData();
+        fd.append("user", user);
+        fd.append("index", idx);
+        const res = await fetch("/delete_reminder", { method: "POST", body: fd });
+        const d = await res.json();
+        alert(d.message || JSON.stringify(d));
+        fetchReminders();
+      };
+
+      container.appendChild(div);
     });
+  }
+}
 
-    // Load and Display Reminders Data
-    async function loadRemindersData() {
-        try {
-            const response = await fetch('/get_reminders');
-            const data = await response.json();
-            remindersListDiv.innerHTML = ''; // Clear existing list
+document.getElementById("rem-add").onclick = async () => {
+  const user = document.getElementById("rem-user").value.trim();
+  const time = document.getElementById("rem-time").value;
+  const message = document.getElementById("rem-message").value.trim();
+  if (!user || !time || !message) return alert("Fill all fields");
+  const fd = new FormData();
+  fd.append("user", user);
+  fd.append("time", time);
+  fd.append("message", message);
+  const res = await fetch("/add_reminder", { method: "POST", body: fd });
+  const d = await res.json();
+  alert(d.message || JSON.stringify(d));
+  document.getElementById("rem-user").value = "";
+  document.getElementById("rem-time").value = "";
+  document.getElementById("rem-message").value = "";
+  fetchReminders();
+};
 
-            if (data.success && data.reminders) {
-                let hasReminders = false;
-                for (const personName in data.reminders) {
-                    if (data.reminders[personName].length > 0) {
-                        hasReminders = true;
-                        const personRemindersHeader = document.createElement('h4');
-                        personRemindersHeader.textContent = personName;
-                        remindersListDiv.appendChild(personRemindersHeader);
-
-                        data.reminders[personName].forEach(reminder => {
-                            const reminderItem = document.createElement('div');
-                            reminderItem.classList.add('reminder-item');
-                            reminderItem.innerHTML = `
-                                <div class="reminder-details">
-                                    <span>${reminder.time}</span>: ${reminder.message}
-                                </div>
-                                <div class="reminder-actions">
-                                    <button class="edit-reminder-btn"
-                                            data-person="${personName}"
-                                            data-time="${reminder.time}"
-                                            data-message="${reminder.message}">Edit</button>
-                                    <button class="delete-reminder-btn"
-                                            data-person="${personName}"
-                                            data-time="${reminder.time}"
-                                            data-message="${reminder.message}">Delete</button>
-                                </div>
-                            `;
-                            remindersListDiv.appendChild(reminderItem);
-                        });
-                    }
-                }
-                if (!hasReminders) {
-                    remindersListDiv.innerHTML = '<p>No reminders set.</p>';
-                }
-                attachReminderActionListeners();
-            } else {
-                remindersListDiv.innerHTML = '<p>No reminders set.</p>';
-            }
-        } catch (error) {
-            console.error('Error loading reminders data:', error);
-            remindersListDiv.innerHTML = '<p>Error loading reminders data.</p>';
-        }
-    }
-
-    function attachReminderActionListeners() {
-        // Edit Reminder
-        document.querySelectorAll('.edit-reminder-btn').forEach(button => {
-            button.addEventListener('click', async (e) => {
-                const person = e.target.dataset.person;
-                const oldTime = e.target.dataset.time;
-                const oldMessage = e.target.dataset.message;
-
-                const newTime = prompt(`Edit time for ${person}'s reminder "${oldMessage}" (Current: ${oldTime}):`, oldTime);
-                if (newTime === null) return; // User cancelled
-
-                const newMessage = prompt(`Edit message for ${person}'s reminder at ${newTime} (Current: "${oldMessage}"):`, oldMessage);
-                if (newMessage === null) return; // User cancelled
-
-                const formData = new FormData();
-                formData.append('person_name', person);
-                formData.append('old_time', oldTime);
-                formData.append('old_message', oldMessage);
-                formData.append('new_time', newTime);
-                formData.append('new_message', newMessage);
-
-                try {
-                    const response = await fetch('/edit_reminder', {
-                        method: 'POST',
-                        body: formData,
-                    });
-                    const data = await response.json();
-                    alert(data.message);
-                    if (data.success) {
-                        loadRemindersData();
-                    }
-                } catch (error) {
-                    console.error('Error editing reminder:', error);
-                    alert('An error occurred while editing the reminder.');
-                }
-            });
-        });
-
-        // Delete Reminder
-        document.querySelectorAll('.delete-reminder-btn').forEach(button => {
-            button.addEventListener('click', async (e) => {
-                const person = e.target.dataset.person;
-                const time = e.target.dataset.time;
-                const message = e.target.dataset.message;
-
-                if (confirm(`Are you sure you want to delete the reminder for ${person} at ${time}: "${message}"?`)) {
-                    const formData = new FormData();
-                    formData.append('person_name', person);
-                    formData.append('time', time);
-                    formData.append('message', message);
-
-                    try {
-                        const response = await fetch('/delete_reminder', {
-                            method: 'POST',
-                            body: formData,
-                        });
-                        const data = await response.json();
-                        alert(data.message);
-                        if (data.success) {
-                            loadRemindersData();
-                        }
-                    } catch (error) {
-                        console.error('Error deleting reminder:', error);
-                        alert('An error occurred while deleting the reminder.');
-                    }
-                }
-            });
-        });
-    }
-
-    // --- Initial Load ---
-    populateReminderPersonSelect();
-    loadRemindersData();
-});
+// initial load
+fetchReminders();

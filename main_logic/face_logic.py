@@ -1,96 +1,133 @@
+# main_logic/face_logic.py
 import os
 import json
+import cv2
+import numpy as np
 from deepface import DeepFace
-import shutil # For deleting directories
 
-# Path to the face database JSON file
-FACE_DB_PATH = os.path.join(os.path.dirname(__file__), "face_db.json")
-# This FACES_DIR should be the actual directory containing face images, relative to server.py
-# Or an absolute path if DeepFace.find needs it. Keeping it relative to the project root.
-FACES_DIR = "faces" 
+# Paths (adjust to absolute)
+BASE_DIR = os.path.dirname(__file__)
+FACES_FOLDER = os.path.abspath(os.path.join(BASE_DIR, "..", "faces"))
+DB_FILE = os.path.join(BASE_DIR, "faces_db.json")
 
-def load_face_db(face_db_path: str):
-    """Loads the face database from face_db.json."""
-    if os.path.exists(face_db_path):
-        with open(face_db_path, 'r') as f:
-            return json.load(f)
-    return {}
+os.makedirs(FACES_FOLDER, exist_ok=True)
+if not os.path.exists(DB_FILE):
+    with open(DB_FILE, "w", encoding="utf-8") as f:
+        json.dump({}, f, indent=4, ensure_ascii=False)
 
-def save_face_db(db, face_db_path: str):
-    """Saves the face database to face_db.json."""
-    with open(face_db_path, 'w') as f:
-        json.dump(db, f, indent=4)
+# load db
+with open(DB_FILE, "r", encoding="utf-8") as f:
+    face_db = json.load(f)
 
-def recognize_face(captured_image_path: str, face_db_path: str, faces_dir: str):
+
+def _save_db():
+    with open(DB_FILE, "w", encoding="utf-8") as f:
+        json.dump(face_db, f, indent=4, ensure_ascii=False)
+
+
+def normalize_name(s: str):
+    return os.path.splitext(s)[0].replace(" ", "").replace("_", "").lower()
+
+
+def add_person_from_file(file_path: str, name: str, relation: str):
     """
-    Recognizes a face in the captured image against the known faces database.
-    Args:
-        captured_image_path (str): Path to the image captured from the webcam.
-        face_db_path (str): Path to the face_db.json file.
-        faces_dir (str): Directory containing the known face images. This is passed to DeepFace.
-    Returns:
-        dict: A dictionary containing 'name' and 'relation' of the recognized person,
-              or None if no face is recognized or found.
+    Move uploaded file into faces folder and add entry to faces_db.json
+    file_path: temporary uploaded path (server uploads/)
     """
     try:
-        # DeepFace.find expects db_path to be the directory where images are stored
-        # It will build/use its .deepface cache there.
-        dfs = DeepFace.find(img_path=captured_image_path, db_path=faces_dir, enforce_detection=False, model_name="VGG-Face")
+        if not os.path.exists(file_path):
+            return {"status": "error", "message": "Uploaded file not found"}
 
-        if dfs and len(dfs[0]) > 0:
-            # Assuming the first result is the most confident match
-            # The 'identity' column in DeepFace results gives the full path to the matched image
-            matched_img_full_path = dfs[0].iloc[0]['identity']
-            matched_filename = os.path.basename(matched_img_full_path)
+        filename = os.path.basename(file_path)
+        # avoid name collisions: if exists, append timestamp
+        dest = os.path.join(FACES_FOLDER, filename)
+        if os.path.exists(dest):
+            base, ext = os.path.splitext(filename)
+            filename = f"{base}_{int(__import__('time').time())}{ext}"
+            dest = os.path.join(FACES_FOLDER, filename)
 
-            face_db = load_face_db(face_db_path)
-            
-            # Find the entry in face_db.json that matches the filename
-            if matched_filename in face_db:
-                data = face_db[matched_filename]
-                return {"name": data["name"], "relation": data["relation"]}
-            else:
-                # This warning indicates a discrepancy between DeepFace's index and your JSON
-                print(f"Warning: DeepFace matched {matched_filename} but it was not found as a key in {face_db_path}")
-                return None
-        else:
-            return None # No face recognized
-    except ValueError as e:
-        # DeepFace raises ValueError if no face is detected in the input image
-        print(f"No face detected in the captured image: {e}")
-        return None
+        # move file
+        os.replace(file_path, dest)
+
+        # update db
+        face_db[filename] = {"name": name, "relation": relation}
+        _save_db()
+
+        return {"status": "success", "message": f"{name} added as {filename}"}
     except Exception as e:
-        print(f"Error during face recognition: {e}")
-        return None
+        return {"status": "error", "message": str(e)}
 
 
-def add_person_logic(filename: str, name: str, relation: str, face_db_path: str):
+def recognize_faces(frame, return_info=False):
     """
-    Adds a new person's face data to the database.
-    Args:
-        filename (str): The filename of the saved image file (e.g., "Alice_0.jpg").
-        name (str): Name of the person.
-        relation (str): Relation of the person to the patient.
-        face_db_path (str): Path to the face_db.json file.
+    Input: OpenCV frame (BGR)
+    Output: list of {name, relation, confidence, status}
     """
-    face_db = load_face_db(face_db_path)
-    face_db[filename] = {"name": name, "relation": relation}
-    save_face_db(face_db, face_db_path)
-    
-    # After adding a new image, it's a good idea to clear DeepFace's cache
-    # so it rebuilds its database to include the new face on the next recognition.
-    deepface_cache_path = os.path.join(FACES_DIR, ".deepface")
-    if os.path.exists(deepface_cache_path):
-        print(f"Deleting DeepFace cache for rebuild: {deepface_cache_path}")
-        shutil.rmtree(deepface_cache_path)
+    results = []
+    try:
+        # small brightness adjust (optional)
+        frame_adj = cv2.convertScaleAbs(frame, alpha=1.1, beta=10)
 
+        # DeepFace.extract_faces expects RGB or array; passing frame_adj works
+        detections = DeepFace.extract_faces(img_path=frame_adj, detector_backend="opencv", enforce_detection=False)
 
-def get_all_people_names(face_db_path: str):
-    """
-    Returns a list of unique names of all people stored in face_db.json.
-    """
-    face_db = load_face_db(face_db_path)
-    unique_names = set()
-    for data in face_db.values():
-        unique_names.add(data["name"])
-    return sorted(list(unique_names))
+        if not detections:
+            return [] if return_info else {"faces": []}
+
+        for i, face_obj in enumerate(detections):
+            face_img = face_obj.get("face")
+            if face_img is None:
+                results.append({"status": "unknown", "name": "Unknown", "relation": "", "confidence": 0.0})
+                continue
+
+            # save temp face (face_img may be floats 0..1)
+            temp_path = f"temp_face_{i}.jpg"
+            arr = (face_img * 255).astype(np.uint8) if (face_img.dtype == np.float32 or face_img.max() <= 1.0) else face_img
+            cv2.imwrite(temp_path, arr)
+
+            # search DB
+            try:
+                res = DeepFace.find(img_path=temp_path, db_path=FACES_FOLDER, enforce_detection=False)
+                if isinstance(res, list) and len(res) > 0 and not res[0].empty:
+                    top = res[0].iloc[0]
+                    matched_file = os.path.basename(top["identity"])
+                    distance = float(top.get("distance", 0.0))
+                    confidence = max(0.0, 1.0 - distance) if distance >= 0 else 0.0
+
+                    # find matching record in face_db
+                    matched_key = None
+                    if matched_file in face_db:
+                        matched_key = matched_file
+                    else:
+                        # try normalized match
+                        matched_key = next((k for k in face_db.keys() if normalize_name(k) == normalize_name(matched_file)), None)
+
+                    if matched_key:
+                        details = face_db[matched_key]
+                        results.append({
+                            "status": "recognized",
+                            "name": details.get("name", "Unknown"),
+                            "relation": details.get("relation", ""),
+                            "confidence": confidence
+                        })
+                    else:
+                        results.append({
+                            "status": "recognized",
+                            "name": os.path.splitext(matched_file)[0],
+                            "relation": "",
+                            "confidence": confidence
+                        })
+                else:
+                    results.append({"status": "unknown", "name": "Unknown", "relation": "", "confidence": 0.0})
+            except Exception as e:
+                results.append({"status": "error", "message": str(e), "name": "Unknown", "relation": "", "confidence": 0.0})
+            finally:
+                try:
+                    os.remove(temp_path)
+                except Exception:
+                    pass
+
+    except Exception as e:
+        return [] if return_info else {"faces": []}
+
+    return results if return_info else {"faces": results}

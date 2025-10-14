@@ -10,5 +10,17 @@
     "divya_0.png": {
         "name": "divya",
         "relation": "Friend"
+    },
+    "ankita_0.jpg": {
+        "name": "ankita",
+        "relation": "Friend"
+    },
+    "Sanjay_0.jpg": {
+        "name": "Sanjay",
+        "relation": "Friend"
+    },
+    "Sanjay_0.png": {
+        "name": "Sanjay",
+        "relation": "Friend"
     }
 }

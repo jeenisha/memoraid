@@ -1,161 +1,55 @@
+/* static/style.css */
 body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: #f4f4f4;
-    color: #333;
+  font-family: Inter, Arial, sans-serif;
+  background: #f3f6fb;
+  color: #1f2937;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-header {
-    background-color: #4CAF50;
-    color: white;
-    padding: 1em 0;
-    text-align: center;
+h1 { margin-bottom: 18px; }
+
+.card {
+  width: 760px;
+  background: #fff;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 6px 18px rgba(20,30,60,0.06);
 }
 
-main {
-    max-width: 1200px;
-    margin: 20px auto;
-    padding: 20px;
-    background-color: white;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 30px;
+.controls { margin-top: 8px; }
+.controls button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  margin-right: 8px;
+  border-radius: 8px;
+  cursor: pointer;
 }
+.controls button:hover { opacity: 0.95; }
 
-section {
-    border: 1px solid #ddd;
-    padding: 20px;
-    border-radius: 8px;
-    background-color: #fff;
-}
-
-h2, h3 {
-    color: #4CAF50;
-}
-
-button {
-    background-color: #4CAF50;
-    color: white;
-    padding: 10px 15px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 1em;
-    margin-right: 10px;
-    margin-bottom: 10px;
-}
-
-button:hover {
-    background-color: #45a049;
-}
-
-form {
-    margin-top: 20px;
-    padding: 15px;
-    border: 1px solid #eee;
-    border-radius: 5px;
-    background-color: #f9f9f9;
-}
-
-form input[type="text"],
-form input[type="file"],
-form input[type="time"],
-form select {
-    width: calc(100% - 20px);
-    padding: 8px;
-    margin-bottom: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-}
-
-form button {
-    width: auto;
-    padding: 10px 20px;
-}
-
-video {
-    display: block;
-    margin-top: 15px;
-    border: 1px solid #ccc;
-    background-color: #000;
+#rec-video, #add-video {
+  width: 100%;
+  max-height: 360px;
+  background: #000;
+  border-radius: 8px;
 }
 
 .result-box {
-    margin-top: 20px;
-    padding: 15px;
-    background-color: #e6ffe6;
-    border: 1px solid #a4e4a4;
-    border-radius: 5px;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 6px;
+  background: #f8fafc;
+  min-height: 40px;
 }
 
-.person-item, .reminder-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px;
-    border-bottom: 1px solid #eee;
-}
+.thumb { width: 120px; border-radius: 6px; display: block; margin-bottom: 8px; }
 
-.person-item:last-child, .reminder-item:last-child {
-    border-bottom: none;
-}
-
-.person-info img {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    object-fit: cover;
-    margin-right: 10px;
-    vertical-align: middle;
-}
-
-.person-info span, .reminder-details span {
-    font-weight: bold;
-}
-
-.person-actions button, .reminder-actions button {
-    margin-left: 5px;
-    padding: 5px 10px;
-    font-size: 0.9em;
-}
-
-.person-actions button.delete, .reminder-actions button.delete {
-    background-color: #f44336;
-}
-.person-actions button.delete:hover, .reminder-actions button.delete:hover {
-    background-color: #d32f2f;
-}
-
-.reminder-item {
-    flex-wrap: wrap; /* Allow wrapping for smaller screens */
-    gap: 10px;
-}
-
-.reminder-details {
-    flex-grow: 1;
-}
-
-.reminder-actions {
-    display: flex;
-    gap: 5px;
-}
-
-/* For smaller screens, adjust layout */
-@media (min-width: 768px) {
-    main {
-        grid-template-columns: 1fr 1fr; /* Two columns on larger screens */
-    }
-    #recognize-person {
-        grid-column: span 2; /* Recognition section spans both columns */
-    }
-}
-
-footer {
-    text-align: center;
-    padding: 1em 0;
-    margin-top: 20px;
-    background-color: #eee;
-    color: #555;
-}
+.rem-item { margin: 6px 0; padding: 8px; border-bottom: 1px solid #eee; display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+.rem-item button { padding: 6px 8px; border-radius: 6px; cursor: pointer; border: none; background: #ef4444; color: white; }
+.rem-item .rem-edit { background: #f59e0b; margin-right: 6px; }
+.match { padding: 6px 0; }
