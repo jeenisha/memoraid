@@ -1,4 +1,4 @@
-# server.py
+
 from fastapi import FastAPI, UploadFile, Form, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles

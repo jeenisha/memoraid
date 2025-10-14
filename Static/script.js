@@ -1,4 +1,3 @@
-// static/script.js
 
 // --- Recognize section ---
 const recVideo = document.getElementById("rec-video");
