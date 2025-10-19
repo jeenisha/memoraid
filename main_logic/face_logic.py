@@ -1,9 +1,11 @@
-
 import os
 import json
 import cv2
 import numpy as np
+import uuid
+import time
 from deepface import DeepFace
+from numpy.linalg import norm
 
 # Paths (adjust to absolute)
 BASE_DIR = os.path.dirname(__file__)
@@ -29,9 +31,37 @@ def normalize_name(s: str):
     return os.path.splitext(s)[0].replace(" ", "").replace("_", "").lower()
 
 
+def _generate_unique_filename(original_name: str):
+    base, ext = os.path.splitext(original_name)
+    safe = base.replace(" ", "_")
+    return f"{safe}_{int(time.time())}_{uuid.uuid4().hex[:6]}{ext or '.jpg'}"
+
+
+def _compute_embedding(img_path: str):
+    """
+    Use DeepFace.represent to compute embedding for a single face image.
+    Returns a 1-D list of floats (embedding) or None on failure.
+    """
+    try:
+        # Facenet or Facenet512 works well; keep enforce_detection False so headless works
+        vec = DeepFace.represent(img_path=img_path, model_name="Facenet", enforce_detection=False)
+        # DeepFace.represent returns list of lists sometimes; coerce to 1D
+        if isinstance(vec, list) and len(vec) > 0:
+            # If nested list
+            if isinstance(vec[0], (list, np.ndarray)):
+                emb = np.array(vec[0]).astype(float)
+            else:
+                emb = np.array(vec).astype(float)
+        else:
+            emb = np.array(vec).astype(float)
+        return emb.tolist()
+    except Exception:
+        return None
+
+
 def add_person_from_file(file_path: str, name: str, relation: str):
     """
-    Move uploaded file into faces folder and add entry to faces_db.json
+    Move uploaded file into faces folder, compute embedding, and add entry to faces_db.json.
     file_path: temporary uploaded path (server uploads/)
     """
     try:
@@ -39,40 +69,60 @@ def add_person_from_file(file_path: str, name: str, relation: str):
             return {"status": "error", "message": "Uploaded file not found"}
 
         filename = os.path.basename(file_path)
-        # avoid name collisions: if exists, append timestamp
-        dest = os.path.join(FACES_FOLDER, filename)
-        if os.path.exists(dest):
-            base, ext = os.path.splitext(filename)
-            filename = f"{base}_{int(__import__('time').time())}{ext}"
-            dest = os.path.join(FACES_FOLDER, filename)
+        unique_name = _generate_unique_filename(filename)
+        dest = os.path.join(FACES_FOLDER, unique_name)
 
-        # move file
+        # move file to faces folder
         os.replace(file_path, dest)
 
-        # update db
-        face_db[filename] = {"name": name, "relation": relation}
+        # compute embedding
+        embedding = _compute_embedding(dest)
+
+        # store in db (embedding as list)
+        face_db[unique_name] = {"name": name, "relation": relation, "embedding": embedding}
         _save_db()
 
-        return {"status": "success", "message": f"{name} added as {filename}"}
+        return {"status": "success", "message": f"{name} added as {unique_name}"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+def _cosine_similarity(a: np.ndarray, b: np.ndarray):
+    if a is None or b is None:
+        return -1.0
+    denom = (norm(a) * norm(b))
+    if denom == 0:
+        return -1.0
+    return float(np.dot(a, b) / denom)
 
 
 def recognize_faces(frame, return_info=False):
     """
     Input: OpenCV frame (BGR)
     Output: list of {name, relation, confidence, status}
+    Uses DeepFace.extract_faces to get face crops, then compares embeddings to stored DB.
     """
     results = []
     try:
-        # small brightness adjust (optional)
+        # adjust brightness/contrast slightly to help detection
         frame_adj = cv2.convertScaleAbs(frame, alpha=1.1, beta=10)
 
-        # DeepFace.extract_faces expects RGB or array; passing frame_adj works
+        # extract faces (returns list of dicts with 'face' key as the face array RGB)
         detections = DeepFace.extract_faces(img_path=frame_adj, detector_backend="opencv", enforce_detection=False)
 
         if not detections:
             return [] if return_info else {"faces": []}
+
+        # Prepare stored embeddings
+        stored_items = []
+        for fname, rec in face_db.items():
+            emb = rec.get("embedding")
+            if emb is not None:
+                try:
+                    emb_arr = np.array(emb, dtype=float)
+                    stored_items.append((fname, rec, emb_arr))
+                except Exception:
+                    continue
 
         for i, face_obj in enumerate(detections):
             face_img = face_obj.get("face")
@@ -80,43 +130,37 @@ def recognize_faces(frame, return_info=False):
                 results.append({"status": "unknown", "name": "Unknown", "relation": "", "confidence": 0.0})
                 continue
 
-            # save temp face (face_img may be floats 0..1)
-            temp_path = f"temp_face_{i}.jpg"
+            # save temp face image
+            temp_path = f"temp_face_{uuid.uuid4().hex[:8]}.jpg"
             arr = (face_img * 255).astype(np.uint8) if (face_img.dtype == np.float32 or face_img.max() <= 1.0) else face_img
             cv2.imwrite(temp_path, arr)
 
-            # search DB
             try:
-                res = DeepFace.find(img_path=temp_path, db_path=FACES_FOLDER, enforce_detection=False)
-                if isinstance(res, list) and len(res) > 0 and not res[0].empty:
-                    top = res[0].iloc[0]
-                    matched_file = os.path.basename(top["identity"])
-                    distance = float(top.get("distance", 0.0))
-                    confidence = max(0.0, 1.0 - distance) if distance >= 0 else 0.0
+                # compute embedding for this face crop
+                emb = _compute_embedding(temp_path)
+                emb_arr = np.array(emb, dtype=float) if emb is not None else None
 
-                    # find matching record in face_db
-                    matched_key = None
-                    if matched_file in face_db:
-                        matched_key = matched_file
-                    else:
-                        # try normalized match
-                        matched_key = next((k for k in face_db.keys() if normalize_name(k) == normalize_name(matched_file)), None)
+                # find best match by cosine similarity
+                best = None
+                best_score = -1.0
+                for fname, rec, stored_emb in stored_items:
+                    score = _cosine_similarity(emb_arr, stored_emb)
+                    if score > best_score:
+                        best_score = score
+                        best = (fname, rec, score)
 
-                    if matched_key:
-                        details = face_db[matched_key]
-                        results.append({
-                            "status": "recognized",
-                            "name": details.get("name", "Unknown"),
-                            "relation": details.get("relation", ""),
-                            "confidence": confidence
-                        })
-                    else:
-                        results.append({
-                            "status": "recognized",
-                            "name": os.path.splitext(matched_file)[0],
-                            "relation": "",
-                            "confidence": confidence
-                        })
+                # interpret best match with threshold
+                # Cosine similarity ranges -1..1. Typical good match > 0.6-0.75 for facenet depending on preprocessing.
+                threshold = 0.6
+                if best and best_score >= threshold:
+                    fname, rec, score = best
+                    confidence = float(best_score)
+                    results.append({
+                        "status": "recognized",
+                        "name": rec.get("name", os.path.splitext(fname)[0]),
+                        "relation": rec.get("relation", ""),
+                        "confidence": confidence
+                    })
                 else:
                     results.append({"status": "unknown", "name": "Unknown", "relation": "", "confidence": 0.0})
             except Exception as e:

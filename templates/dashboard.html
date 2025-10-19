@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Memoraid - Caregiver Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    video#add-video { width: 320px; height: 240px; border: 1px solid #ccc; background:#000; }
+  </style>
+</head>
+<body>
+  <h1>Caregiver Dashboard</h1>
+
+  <!-- Add Person -->
+  <section class="card">
+    <h2>Add Person</h2>
+
+    <div class="sub">
+      <h3>Upload Image</h3>
+      <input id="upload-name" placeholder="Name" />
+      <input id="upload-relation" placeholder="Relation" />
+      <input id="upload-file" type="file" accept="image/*" />
+      <button id="upload-add">Add Person (Upload)</button>
+      <div id="upload-msg" class="result-box"></div>
+    </div>
+
+    <hr/>
+
+    <div class="sub">
+      <h3>Add via Camera</h3>
+      <video id="add-video" autoplay playsinline></video>
+      <canvas id="add-canvas" style="display:none;"></canvas>
+
+      <input id="cam-name" placeholder="Name" />
+      <input id="cam-relation" placeholder="Relation" />
+      <div class="controls">
+        <button id="add-open">Open Camera</button>
+        <button id="add-capture">Capture Image</button>
+        <button id="add-close">Close Camera</button>
+        <button id="add-submit">Add Person (From Camera)</button>
+      </div>
+
+      <div id="added-preview" class="result-box">No preview</div>
+    </div>
+  </section>
+
+  <!-- Reminders -->
+  <section class="card">
+    <h2>Reminders</h2>
+    <input id="rem-user" placeholder="User" />
+    <input id="rem-time" type="time" />
+    <input id="rem-message" placeholder="Message" />
+    <button id="rem-add">Add Reminder</button>
+
+    <div id="rem-list" class="result-box"></div>
+  </section>
+
+  <script>
+    // --- Add Person via upload ---
+    document.getElementById('upload-add').addEventListener('click', async () => {
+      const name = document.getElementById('upload-name').value.trim();
+      const relation = document.getElementById('upload-relation').value.trim();
+      const fileEl = document.getElementById('upload-file');
+      const msgDiv = document.getElementById('upload-msg');
+
+      if (!name || !relation) { msgDiv.innerText = 'Name & relation required'; return; }
+      if (!fileEl.files || fileEl.files.length === 0) { msgDiv.innerText = 'Select file'; return; }
+
+      const form = new FormData();
+      form.append('name', name);
+      form.append('relation', relation);
+      form.append('file', fileEl.files[0], fileEl.files[0].name);
+
+      const res = await fetch('/add_person', { method: 'POST', body: form });
+      const j = await res.json();
+      if (j.status === 'success') {
+        msgDiv.innerText = j.message;
+        // clear inputs
+        document.getElementById('upload-name').value = '';
+        document.getElementById('upload-relation').value = '';
+        fileEl.value = '';
+      } else {
+        msgDiv.innerText = j.message || 'Error';
+      }
+    });
+
+    // --- Camera capture for add person ---
+    const addVideo = document.getElementById('add-video');
+    const addCanvas = document.getElementById('add-canvas');
+    let addStream = null;
+
+    document.getElementById('add-open').addEventListener('click', async () => {
+      addStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      addVideo.srcObject = addStream;
+      await addVideo.play();
+    });
+
+    document.getElementById('add-close').addEventListener('click', () => {
+      if (addStream) addStream.getTracks().forEach(t => t.stop());
+      addStream = null;
+      addVideo.pause();
+    });
+
+    document.getElementById('add-capture').addEventListener('click', async () => {
+      if (!addStream) return alert('Open camera first');
+      addCanvas.width = addVideo.videoWidth || 320;
+      addCanvas.height = addVideo.videoHeight || 240;
+      addCanvas.getContext('2d').drawImage(addVideo, 0, 0, addCanvas.width, addCanvas.height);
+      const dataUrl = addCanvas.toDataURL('image/jpeg', 0.9);
+      document.getElementById('added-preview').innerHTML = `<img src="${dataUrl}" width="160" />`;
+    });
+
+    document.getElementById('add-submit').addEventListener('click', async () => {
+      const name = document.getElementById('cam-name').value.trim();
+      const relation = document.getElementById('cam-relation').value.trim();
+      if (!name || !relation) { alert('Name & relation required'); return; }
+      // convert canvas to blob
+      addCanvas.toBlob(async (blob) => {
+        const filename = `cam_upload_${Date.now()}.jpg`;
+        const form = new FormData();
+        form.append('name', name);
+        form.append('relation', relation);
+        form.append('file', new File([blob], filename, { type: 'image/jpeg' }));
+        const res = await fetch('/add_person', { method: 'POST', body: form });
+        const j = await res.json();
+        if (j.status === 'success') {
+          alert('Person added: ' + j.message);
+          // clear
+          document.getElementById('cam-name').value = '';
+          document.getElementById('cam-relation').value = '';
+          document.getElementById('added-preview').innerText = 'No preview';
+        } else {
+          alert('Error: ' + (j.message || 'unknown'));
+        }
+      }, 'image/jpeg', 0.9);
+    });
+
+    // --- Reminders CRUD (Add + display) ---
+    async function loadReminders() {
+      const res = await fetch('/get_reminders');
+      const data = await res.json();
+      const out = [];
+      for (const [user, arr] of Object.entries(data || {})) {
+        if (!Array.isArray(arr)) continue;
+        arr.forEach((r, i) => {
+          out.push(`<div><b>${user}</b> @ ${r.time} : ${r.message}  <button onclick="deleteRem('${user}',${i})">Del</button></div>`);
+        });
+      }
+      document.getElementById('rem-list').innerHTML = out.join('') || 'No reminders';
+    }
+
+    async function deleteRem(user, idx) {
+      const form = new FormData();
+      form.append('user', user);
+      form.append('index', idx);
+      const res = await fetch('/delete_reminder', { method: 'POST', body: form });
+      const j = await res.json();
+      if (j.status === 'success') {
+        loadReminders();
+      } else alert('Delete failed');
+    }
+
+    document.getElementById('rem-add').addEventListener('click', async () => {
+      const user = document.getElementById('rem-user').value.trim();
+      const time = document.getElementById('rem-time').value.trim();
+      const msg = document.getElementById('rem-message').value.trim();
+      if (!user || !time || !msg) return alert('Fill all fields');
+      const form = new FormData();
+      form.append('user', user);
+      form.append('time', time);
+      form.append('message', msg);
+      const res = await fetch('/add_reminder', { method: 'POST', body: form });
+      const j = await res.json();
+      if (j.status === 'success') {
+        alert('Reminder added');
+        document.getElementById('rem-user').value = '';
+        document.getElementById('rem-time').value = '';
+        document.getElementById('rem-message').value = '';
+        loadReminders();
+      } else alert('Error adding reminder');
+    });
+
+    // init
+    loadReminders();
+  </script>
+</body>
+</html>

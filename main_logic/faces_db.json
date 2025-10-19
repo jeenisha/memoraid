@@ -230,5 +230,15 @@
     "cam_capture_1760442124.jpg": {
         "name": "Jeenisha",
         "relation": "Friend"
+    },
+    "cam_upload_1760849996996_1760849997_7c55b7.jpg": {
+        "name": "Jeenisha",
+        "relation": "Friend",
+        "embedding": null
+    },
+    "cam_upload_1760855797892_1760855797_2d660d.jpg": {
+        "name": "Jeenisha Bhutekar",
+        "relation": "friend",
+        "embedding": null
     }
 }

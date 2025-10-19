@@ -1,17 +1,7 @@
 {
-    "Jeenisha": [
-        {
-            "time": "16:00",
-            "message": "Meet me"
-        }
-    ],
+    "Jeenisha": [],
     "Mom": [],
-    "Ankita": [
-        {
-            "time": "01:12",
-            "message": "Take nap"
-        }
-    ],
+    "Ankita": [],
     "divya": [],
     "Divya": [
         {
@@ -21,6 +11,16 @@
         {
             "time": "06:12",
             "message": "Good morning"
+        }
+    ],
+    "jeenu": [
+        {
+            "time": "10:31",
+            "message": "testing reminder"
+        },
+        {
+            "time": "12:08",
+            "message": "checking"
         }
     ]
 }

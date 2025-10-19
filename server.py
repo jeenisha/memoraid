@@ -1,6 +1,5 @@
-
 from fastapi import FastAPI, UploadFile, Form, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import shutil, os, cv2, pathlib
@@ -16,9 +15,30 @@ templates = Jinja2Templates(directory="templates")
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+CAREGIVER_PASSWORD = "@dmin123"   # password provided by you
+
 @app.get("/")
 def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.post("/login")
+async def login(password: str = Form(...)):
+    try:
+        if password == CAREGIVER_PASSWORD:
+            # Successful: respond with JSON (client will redirect)
+            return JSONResponse({"status": "success"})
+        else:
+            return JSONResponse({"status": "error", "message": "Invalid password"})
+    except Exception as e:
+        return JSONResponse({"status": "error", "message": str(e)})
+
+
+@app.get("/dashboard")
+def dashboard(request: Request):
+    # For simplicity we just render the dashboard template — the client is responsible
+    # for asking password before redirecting here.
+    return templates.TemplateResponse("dashboard.html", {"request": request})
 
 
 # Recognize: receives a single image file (from webcam capture or upload)

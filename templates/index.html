@@ -1,72 +1,240 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Memoraid Dashboard</title>
+  <title>Memoraid - Home</title>
   <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    /* small overrides for larger preview */
+    #rec-video { width: 640px; height: 480px; border: 1px solid #ccc; background:#000; }
+    .controls button { margin-right: 6px; }
+    /* simple modal */
+    .modal { display:none; position: fixed; left:0; top:0; right:0; bottom:0; background: rgba(0,0,0,0.5); align-items:center; justify-content:center; }
+    .modal .box { background:#fff; padding:16px; border-radius:6px; width:320px; }
+  </style>
 </head>
 <body>
-  <h1>🧠 Memoraid - Dashboard</h1>
+  <h1>🧠 Memoraid</h1>
 
-  <!-- Recognize Person -->
+  <!-- Recognize Person (Home) -->
   <section class="card">
-    <h2>Recognize Person</h2>
+    <h2>Recognize Person (Home)</h2>
     <video id="rec-video" autoplay playsinline></video>
     <canvas id="rec-canvas" style="display:none;"></canvas>
 
     <div class="controls">
       <button id="rec-start">Start Detection</button>
-      <button id="rec-capture">Capture</button>
+      <button id="rec-capture">Capture & Recognize Now</button>
       <button id="rec-stop">Stop Detection</button>
+      <button id="caregiver-login">Caregiver Login</button>
     </div>
 
     <div id="rec-result" class="result-box">No result yet.</div>
   </section>
 
-  <!-- Add Person -->
-  <section class="card">
-    <h2>Add Person</h2>
-
-    <div class="sub">
-      <h3>Upload Image</h3>
-      <input id="upload-name" placeholder="Name" />
-      <input id="upload-relation" placeholder="Relation" />
-      <input id="upload-file" type="file" accept="image/*" />
-      <button id="upload-add">Add Person (Upload)</button>
-    </div>
-
-    <hr/>
-
-    <div class="sub">
-      <h3>Add via Camera</h3>
-      <video id="add-video" autoplay playsinline style="display:none;"></video>
-      <canvas id="add-canvas" style="display:none;"></canvas>
-
-      <input id="cam-name" placeholder="Name" />
-      <input id="cam-relation" placeholder="Relation" />
-      <div class="controls">
-        <button id="add-open">Open Camera</button>
-        <button id="add-capture">Capture Image</button>
-        <button id="add-close">Close Camera</button>
-        <button id="add-submit">Add Person (From Camera)</button>
+  <!-- Caregiver login modal -->
+  <div id="login-modal" class="modal">
+    <div class="box">
+      <h3>Caregiver Login</h3>
+      <input id="login-password" type="password" placeholder="Password" />
+      <div style="margin-top:10px;">
+        <button id="login-submit">Login</button>
+        <button id="login-cancel">Cancel</button>
       </div>
-
-      <div id="added-preview" class="result-box">No preview</div>
+      <div id="login-msg" style="color:red; margin-top:8px;"></div>
     </div>
-  </section>
+  </div>
 
-  <!-- Reminders -->
-  <section class="card">
-    <h2>Reminders</h2>
-    <input id="rem-user" placeholder="User" />
-    <input id="rem-time" type="time" />
-    <input id="rem-message" placeholder="Message" />
-    <button id="rem-add">Add Reminder</button>
+  <script>
+    // --- camera + recognition logic ---
+    const video = document.getElementById('rec-video');
+    const canvas = document.getElementById('rec-canvas');
+    const resultBox = document.getElementById('rec-result');
 
-    <div id="rem-list" class="result-box"></div>
-  </section>
+    let stream = null;
+    let detectInterval = null;
+    const RECOGNIZE_INTERVAL_MS = 2000; // 2s
 
-  <script src="/static/script.js"></script>
+    async function openCamera() {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      video.srcObject = stream;
+      await video.play();
+    }
+
+    function closeCamera() {
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+      }
+      video.pause();
+    }
+
+    async function captureFrameAsFile() {
+      // draw video frame to canvas and create a blob for upload
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      return new Promise((resolve) => {
+        canvas.toBlob(blob => {
+          // create a File-like object with a unique name (so server won't mix)
+          const filename = `capture_${Date.now()}.jpg`;
+          const file = new File([blob], filename, { type: 'image/jpeg' });
+          resolve(file);
+        }, 'image/jpeg', 0.9);
+      });
+    }
+
+    async function sendFrameForRecognition(file) {
+      const form = new FormData();
+      form.append('file', file, file.name);
+      const resp = await fetch('/recognize', { method: 'POST', body: form });
+      return resp.json();
+    }
+
+    async function doRecognitionOnce() {
+      if (!stream) return;
+      try {
+        const file = await captureFrameAsFile();
+        const json = await sendFrameForRecognition(file);
+        if (json && json.status === 'success') {
+          const faces = json.faces;
+          // faces may be array
+          if (Array.isArray(faces)) {
+            // if your server returns {faces: [...]}, adapt accordingly
+            processFaces(faces);
+          } else if (faces && faces.faces) {
+            processFaces(faces.faces);
+          } else {
+            resultBox.innerText = "No faces detected.";
+          }
+        } else {
+          resultBox.innerText = "Recognition error: " + (json.message || "unknown");
+        }
+      } catch (e) {
+        resultBox.innerText = "Recognition exception: " + e.message;
+      }
+    }
+
+    function processFaces(facesArr) {
+      if (!facesArr || facesArr.length === 0) {
+        resultBox.innerText = "No faces detected.";
+        return;
+      }
+      // display multiple faces results
+      const lines = facesArr.map((f, idx) => {
+        if (f.status === 'recognized') {
+          return `Face ${idx+1}: ${f.name} (${f.relation}) — confidence ${Number(f.confidence).toFixed(2)}`;
+        } else if (f.status === 'unknown') {
+          return `Face ${idx+1}: Unknown`;
+        } else if (f.status === 'error') {
+          return `Face ${idx+1}: Error: ${f.message || 'err'}`;
+        } else {
+          return `Face ${idx+1}: ${JSON.stringify(f)}`;
+        }
+      });
+      resultBox.innerText = lines.join('\n');
+    }
+
+    document.getElementById('rec-start').addEventListener('click', async () => {
+      if (!stream) await openCamera();
+      if (detectInterval) clearInterval(detectInterval);
+      detectInterval = setInterval(doRecognitionOnce, RECOGNIZE_INTERVAL_MS);
+    });
+
+    document.getElementById('rec-stop').addEventListener('click', () => {
+      if (detectInterval) clearInterval(detectInterval);
+      detectInterval = null;
+      closeCamera();
+    });
+
+    document.getElementById('rec-capture').addEventListener('click', async () => {
+      if (!stream) await openCamera();
+      await doRecognitionOnce();
+    });
+
+    // --- Caregiver login modal ---
+    const loginModal = document.getElementById('login-modal');
+    const loginPassword = document.getElementById('login-password');
+    const loginMsg = document.getElementById('login-msg');
+
+    document.getElementById('caregiver-login').addEventListener('click', () => {
+      loginPassword.value = '';
+      loginMsg.innerText = '';
+      loginModal.style.display = 'flex';
+      loginPassword.focus();
+    });
+
+    document.getElementById('login-cancel').addEventListener('click', () => {
+      loginModal.style.display = 'none';
+    });
+
+    document.getElementById('login-submit').addEventListener('click', async () => {
+      const p = loginPassword.value.trim();
+      if (!p) { loginMsg.innerText = 'Enter password'; return; }
+      // call server to validate
+      const form = new FormData();
+      form.append('password', p);
+      const resp = await fetch('/login', { method: 'POST', body: form });
+      const j = await resp.json();
+      if (j && j.status === 'success') {
+        // close modal and redirect to dashboard
+        loginModal.style.display = 'none';
+        // Open dashboard in same tab
+        window.location.href = '/dashboard';
+      } else {
+        loginMsg.innerText = j.message || 'Invalid password';
+      }
+    });
+
+    // --- Reminders polling + browser alert + TTS ---
+    let triggeredSet = new Set();
+
+    async function pollReminders() {
+      try {
+        const resp = await fetch('/get_reminders');
+        const data = await resp.json();
+        if (data && typeof data === 'object') {
+          const now = new Date();
+          const hh = now.getHours().toString().padStart(2,'0');
+          const mm = now.getMinutes().toString().padStart(2,'0');
+          const cur = `${hh}:${mm}`;
+          // iterate reminders
+          for (const [user, arr] of Object.entries(data)) {
+            if (!Array.isArray(arr)) continue;
+            for (const r of arr) {
+              const t = (''+ (r.time || '')).trim();
+              const msg = (''+ (r.message || '')).trim();
+              const key = `${user}___${t}___${msg}`;
+              if (t === cur && !triggeredSet.has(key)) {
+                // show small browser alert and TTS
+                try {
+                  alert(`Reminder for ${user}: ${msg}`);
+                } catch(e){}
+                try {
+                  // Web Speech API for TTS
+                  if ('speechSynthesis' in window) {
+                    const utter = new SpeechSynthesisUtterance(msg);
+                    window.speechSynthesis.speak(utter);
+                  }
+                } catch(e){}
+                triggeredSet.add(key);
+              }
+            }
+          }
+          // Clear triggeredSet at midnight: simple heuristic
+          // We'll clear if set grows large to avoid memory growth
+          if (triggeredSet.size > 1000) triggeredSet.clear();
+        }
+      } catch (e) {
+        console.log("Poll reminders error:", e);
+      }
+    }
+
+    // poll every 30s
+    setInterval(pollReminders, 30*1000);
+    // initial poll
+    pollReminders();
+  </script>
 </body>
 </html>
