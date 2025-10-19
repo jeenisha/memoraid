@@ -1,12 +1,12 @@
-from fastapi import FastAPI, UploadFile, Form, File, Request
-from fastapi.responses import JSONResponse, HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from fastapi import FastAPI, UploadFile, Form, File, Request# type: ignore
+from fastapi.responses import JSONResponse, HTMLResponse# type: ignore
+from fastapi.staticfiles import StaticFiles# type: ignore
+from fastapi.templating import Jinja2Templates # type: ignore
 import os
 import shutil
-import cv2
+import cv2# type: ignore
 import numpy as np
-from deepface import DeepFace
+from deepface import DeepFace# type: ignore
 
 from main_logic import face_logic, reminder_logic
 
@@ -128,5 +128,5 @@ def delete_reminder(user: str = Form(...), index: int = Form(...)):
 
 # ------------------ RUN ------------------
 if __name__ == "__main__":
-    import uvicorn
+    import uvicorn# type: ignore
     uvicorn.run(app, host="0.0.0.0", port=8000)
