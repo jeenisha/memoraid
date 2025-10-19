@@ -1,5 +1,4 @@
 {
-    
     "Jeenisha Bhutekar_0.jpg": {
         "name": "Jeenisha Bhutekar",
         "relation": "friendd"
@@ -19,6 +18,13 @@
     "Sakshi Jadhav_0.jpg": {
         "name": "Sakshi Jadhav",
         "relation": "Sister"
+    },
+    "Jeenisha_1.jpg": {
+        "name": "Jeenisha",
+        "relation": "Friend"
+    },
+    "Jeenisha_2.jpg": {
+        "name": "Jeenisha",
+        "relation": "Friend"
     }
-
 }
