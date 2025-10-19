@@ -6,7 +6,7 @@ import os
 import shutil
 import cv2
 import numpy as np
-
+from deepface import DeepFace
 
 from main_logic import face_logic, reminder_logic
 
