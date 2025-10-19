@@ -1,5 +1,4 @@
-
-// --- Recognize section ---
+// ===================== FACE RECOGNITION =====================
 const recVideo = document.getElementById("rec-video");
 const recCanvas = document.getElementById("rec-canvas");
 const recStart = document.getElementById("rec-start");
@@ -42,7 +41,6 @@ recCapture.onclick = async () => {
   const ctx = recCanvas.getContext("2d");
   ctx.drawImage(recVideo, 0, 0, recCanvas.width, recCanvas.height);
 
-  // convert to blob and send
   recCanvas.toBlob(async (blob) => {
     const fd = new FormData();
     fd.append("file", blob, "capture.jpg");
@@ -51,20 +49,13 @@ recCapture.onclick = async () => {
       const res = await fetch("/recognize", { method: "POST", body: fd });
       const data = await res.json();
       if (data.status === "success") {
-        const faces = data.faces || [];
-        if (faces.length === 0) {
-          recResult.textContent = "No faces detected.";
+        const faces = data.faces.faces || [];
+        if (faces.length === 0 || faces[0].face === "Unknown") {
+          recResult.textContent = "Unknown";
         } else {
-          // show first match (or list)
-          recResult.innerHTML = faces.map((f, i) => {
-            if (f.status === "recognized") {
-              return `<div class="match">✅ ${f.name} — ${f.relation} (confidence: ${ (f.confidence || 0).toFixed(2) })</div>`;
-            } else if (f.status === "unknown") {
-              return `<div class="match">❌ Unknown</div>`;
-            } else {
-              return `<div class="match">⚠️ ${f.status}</div>`;
-            }
-          }).join("");
+          const topFace = faces[0];
+          const simpleName = topFace.name.split(" ")[0]; // first word only
+          recResult.textContent = `${simpleName} — your ${topFace.relation}`;
         }
       } else {
         recResult.textContent = "Error: " + (data.message || "unknown");
@@ -72,13 +63,14 @@ recCapture.onclick = async () => {
     } catch (err) {
       recResult.textContent = "Recognition error: " + err.message;
     } finally {
-      // after one capture we close camera as requested
       closeRecCam();
     }
   }, "image/jpeg");
 };
 
-// --- Add person (upload) ---
+
+
+// ===================== ADD PERSON (UPLOAD) =====================
 document.getElementById("upload-add").onclick = async () => {
   const name = document.getElementById("upload-name").value.trim();
   const relation = document.getElementById("upload-relation").value.trim();
@@ -95,13 +87,12 @@ document.getElementById("upload-add").onclick = async () => {
   const res = await fetch("/add_person", { method: "POST", body: fd });
   const data = await res.json();
   alert(data.message || JSON.stringify(data));
-  // optionally clear inputs
   fileInput.value = "";
   document.getElementById("upload-name").value = "";
   document.getElementById("upload-relation").value = "";
 };
 
-// --- Add person (camera) ---
+// ===================== ADD PERSON (CAMERA) =====================
 const addVideo = document.getElementById("add-video");
 const addCanvas = document.getElementById("add-canvas");
 const addOpen = document.getElementById("add-open");
@@ -133,7 +124,7 @@ addClose.onclick = () => {
   addedPreview.textContent = "Camera closed.";
 };
 
-addCapture.onclick = async () => {
+addCapture.onclick = () => {
   if (!addStream) return alert("Open camera first");
   addCanvas.width = addVideo.videoWidth;
   addCanvas.height = addVideo.videoHeight;
@@ -161,7 +152,7 @@ addSubmit.onclick = async () => {
   const res = await fetch("/add_person", { method: "POST", body: fd });
   const data = await res.json();
   alert(data.message || JSON.stringify(data));
-  // clear and close camera
+
   addedBlob = null;
   addClose.onclick();
   document.getElementById("cam-name").value = "";
@@ -169,7 +160,7 @@ addSubmit.onclick = async () => {
   addedPreview.textContent = "No preview";
 };
 
-// --- Reminders: fetch, add, edit, delete ---
+// ===================== REMINDERS =====================
 async function fetchReminders() {
   const res = await fetch("/get_reminders");
   const data = await res.json();
@@ -234,5 +225,5 @@ document.getElementById("rem-add").onclick = async () => {
   fetchReminders();
 };
 
-// initial load
+// INITIAL LOAD
 fetchReminders();

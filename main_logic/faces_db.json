@@ -240,5 +240,23 @@
         "name": "Jeenisha Bhutekar",
         "relation": "friend",
         "embedding": null
+    },
+    "cam_upload_1760858405693_1760858405_063e36.jpg": {
+        "name": "Jeenu",
+        "relation": "friend",
+        "embedding": null
+    },
+    "Jeenisha_7.jpg": {
+        "name": "Jeenisha",
+        "relation": "frnd",
+        "embedding": null
+    },
+    "Jeenisha_0.jpg": {
+        "name": "Jeenisha",
+        "relation": "frnd"
+    },
+    "Jeenisha_B_0.jpg": {
+        "name": "Jeenisha_B",
+        "relation": "Friend"
     }
 }

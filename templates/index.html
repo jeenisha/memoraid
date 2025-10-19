@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Memoraid - Home</title>
+  <title>Memoraid - Detect Person</title>
   <link rel="stylesheet" href="/static/style.css" />
   <style>
     /* small overrides for larger preview */
@@ -14,18 +14,18 @@
   </style>
 </head>
 <body>
-  <h1>🧠 Memoraid</h1>
+  <h1>🧠👀 Memoraid</h1>
 
   <!-- Recognize Person (Home) -->
   <section class="card">
-    <h2>Recognize Person (Home)</h2>
+    <h2>Recognize Person</h2>
     <video id="rec-video" autoplay playsinline></video>
     <canvas id="rec-canvas" style="display:none;"></canvas>
 
     <div class="controls">
-      <button id="rec-start">Start Detection</button>
+      <button id="rec-start">Start Camera</button>
       <button id="rec-capture">Capture & Recognize Now</button>
-      <button id="rec-stop">Stop Detection</button>
+      <button id="rec-stop">Stop Camera</button>
       <button id="caregiver-login">Caregiver Login</button>
     </div>
 
@@ -41,7 +41,7 @@
         <button id="login-submit">Login</button>
         <button id="login-cancel">Cancel</button>
       </div>
-      <div id="login-msg" style="color:red; margin-top:8px;"></div>
+      <div id="login-msg" style="color:rgb(255, 0, 0); margin-top:8px;"></div>
     </div>
   </div>
 
@@ -53,7 +53,7 @@
 
     let stream = null;
     let detectInterval = null;
-    const RECOGNIZE_INTERVAL_MS = 2000; // 2s
+    const RECOGNIZE_INTERVAL_MS = 4000; // 4s
 
     async function openCamera() {
       stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });

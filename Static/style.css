@@ -1,55 +1,174 @@
-
+/* ================= GENERAL STYLES ================= */
 body {
-  font-family: Inter, Arial, sans-serif;
-  background: #f3f6fb;
-  color: #1f2937;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+    font-family: Arial, sans-serif;
+    background-color: #f4f6f8;
+    margin: 0;
+    padding: 0;
+    color: #333;
 }
 
-h1 { margin-bottom: 18px; }
+h1, h2, h3 {
+    color: #222;
+    margin: 10px 0;
+}
 
+button {
+    cursor: pointer;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 5px;
+    background-color: #3b82f6;
+    color: white;
+    font-weight: bold;
+    margin: 2px;
+    transition: 0.2s;
+}
+
+button:hover {
+    background-color: #2563eb;
+}
+
+input, select, textarea {
+    padding: 5px;
+    margin: 3px 0;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+
+/* ================= VIDEO & CANVAS ================= */
+video, canvas {
+    border: 2px solid #ccc;
+    border-radius: 5px;
+    max-width: 100%;
+}
+
+.thumb {
+    max-width: 150px;
+    border-radius: 5px;
+    margin-top: 5px;
+}
+
+/* ================= RECOGNITION RESULTS ================= */
+#rec-result {
+    margin-top: 10px;
+}
+
+#rec-result .match {
+    background-color: #d1fae5;
+    border-left: 5px solid #10b981;
+    color: #065f46;
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 6px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#rec-result .match.unknown {
+    background-color: #fee2e2;
+    border-left: 5px solid #ef4444;
+    color: #7f1d1d;
+}
+
+#rec-result .emoji {
+    font-size: 1.3rem;
+}
+
+/* ================= ADD PERSON PREVIEW ================= */
+#added-preview {
+    margin-top: 8px;
+    font-style: italic;
+    color: #555;
+}
+
+/* ================= REMINDERS ================= */
+.rem-item {
+    background-color: #e0f2fe;
+    border-radius: 5px;
+    margin: 4px 0;
+    padding: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.rem-item button {
+    padding: 3px 8px;
+    font-size: 0.9rem;
+}
+
+#rem-list {
+    margin-top: 10px;
+}
+
+/* ================= DASHBOARD / SECTIONS ================= */
+.section {
+    background-color: white;
+    padding: 10px 15px;
+    border-radius: 8px;
+    box-shadow: 0px 2px 8px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+}
+
+label {
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+/* ================= LOGIN PAGE ================= */
+.login-container {
+    max-width: 400px;
+    margin: 50px auto;
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0px 2px 8px rgba(0,0,0,0.1);
+}
+
+.login-container h2 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.login-container input {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+/* ================= MODERN CARD STYLE ================= */
 .card {
-  width: 760px;
-  background: #fff;
-  border-radius: 10px;
-  padding: 16px;
-  margin-bottom: 16px;
-  box-shadow: 0 6px 18px rgba(20,30,60,0.06);
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+    padding: 15px;
+    margin-bottom: 15px;
 }
 
-.controls { margin-top: 8px; }
-.controls button {
-  background: #2563eb;
-  color: white;
-  border: none;
-  padding: 8px 12px;
-  margin-right: 8px;
-  border-radius: 8px;
-  cursor: pointer;
-}
-.controls button:hover { opacity: 0.95; }
-
-#rec-video, #add-video {
-  width: 100%;
-  max-height: 360px;
-  background: #000;
-  border-radius: 8px;
+/* ================= MISC ================= */
+.alert {
+    color: red;
+    font-weight: bold;
 }
 
-.result-box {
-  margin-top: 10px;
-  padding: 10px;
-  border-radius: 6px;
-  background: #f8fafc;
-  min-height: 40px;
+.success {
+    color: green;
+    font-weight: bold;
 }
 
-.thumb { width: 120px; border-radius: 6px; display: block; margin-bottom: 8px; }
-
-.rem-item { margin: 6px 0; padding: 8px; border-bottom: 1px solid #eee; display: flex; gap: 8px; align-items: center; justify-content: space-between; }
-.rem-item button { padding: 6px 8px; border-radius: 6px; cursor: pointer; border: none; background: #ef4444; color: white; }
-.rem-item .rem-edit { background: #f59e0b; margin-right: 6px; }
-.match { padding: 6px 0; }
+/* ================= SMALL DEVICES ================= */
+@media (max-width: 600px) {
+    video, canvas {
+        width: 100%;
+    }
+    button {
+        width: 100%;
+        margin: 5px 0;
+    }
+    .rem-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

@@ -5,12 +5,12 @@
     "divya": [],
     "Divya": [
         {
-            "time": "04:44",
-            "message": "Good Morning"
-        },
-        {
             "time": "06:12",
             "message": "Good morning"
+        },
+        {
+            "time": "13:37",
+            "message": "checking"
         }
     ],
     "jeenu": [
@@ -21,6 +21,10 @@
         {
             "time": "12:08",
             "message": "checking"
+        },
+        {
+            "time": "13:38",
+            "message": "Drink water"
         }
     ]
 }
