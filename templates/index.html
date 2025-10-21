@@ -53,7 +53,7 @@
 
     let stream = null;
     let detectInterval = null;
-    const RECOGNIZE_INTERVAL_MS = 4000; // 4s
+    const RECOGNIZE_INTERVAL_MS = 20000; // 20s
 
     async function openCamera() {
       stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
@@ -88,7 +88,7 @@
     async function sendFrameForRecognition(file) {
       const form = new FormData();
       form.append('file', file, file.name);
-      const resp = await fetch('/recognize', { method: 'POST', body: form });
+      const resp = await fetch('/recognize_face', { method: 'POST', body: form });
       return resp.json();
     }
 
@@ -118,22 +118,21 @@
 
     function processFaces(facesArr) {
       if (!facesArr || facesArr.length === 0) {
-        resultBox.innerText = "No faces detected.";
+        resultBox.innerText = "Unknown";
         return;
       }
-      // display multiple faces results
-      const lines = facesArr.map((f, idx) => {
-        if (f.status === 'recognized') {
-          return `Face ${idx+1}: ${f.name} (${f.relation}) — confidence ${Number(f.confidence).toFixed(2)}`;
-        } else if (f.status === 'unknown') {
-          return `Face ${idx+1}: Unknown`;
-        } else if (f.status === 'error') {
-          return `Face ${idx+1}: Error: ${f.message || 'err'}`;
-        } else {
-          return `Face ${idx+1}: ${JSON.stringify(f)}`;
-        }
-      });
-      resultBox.innerText = lines.join('\n');
+
+      // Take only the best match (the first person in the list)
+      const topMatch = facesArr[0];
+
+      if (topMatch.status === 'recognized' && topMatch.name !== "Unknown") {
+        // Format the string exactly as you requested: "Name your Relation"
+        const relation = topMatch.relation || "friend"; // Use "friend" as a default
+        resultBox.innerText = `${topMatch.name} your ${relation}`;
+      } else {
+        // If the best match is still unknown, just show "Unknown"
+        resultBox.innerText = "Unknown";
+      }
     }
 
     document.getElementById('rec-start').addEventListener('click', async () => {

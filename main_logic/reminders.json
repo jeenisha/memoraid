@@ -18,18 +18,5 @@
             "message": "checking"
         }
     ],
-    "jeenu": [
-        {
-            "time": "10:31",
-            "message": "testing reminder"
-        },
-        {
-            "time": "12:08",
-            "message": "checking"
-        },
-        {
-            "time": "13:38",
-            "message": "Drink water"
-        }
-    ]
+    "jeenu": []
 }
