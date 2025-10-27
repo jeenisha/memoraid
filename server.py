@@ -1,67 +1,104 @@
-
-from fastapi import FastAPI, UploadFile, Form, Request
-from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-import shutil, os, cv2, pathlib
+from fastapi import FastAPI, UploadFile, Form, File, Request# type: ignore
+from fastapi.responses import JSONResponse, HTMLResponse# type: ignore
+from fastapi.staticfiles import StaticFiles# type: ignore
+from fastapi.templating import Jinja2Templates # type: ignore
+import os
+import shutil
+import cv2# type: ignore
+import numpy as np
+from deepface import DeepFace# type: ignore
 
 from main_logic import face_logic, reminder_logic
 
-app = FastAPI(title="Memoraid API")
+app = FastAPI(title="Memoraid AI System")
 
-# static + templates
+# ------------------ PATH SETUP ------------------
+BASE_DIR = os.path.dirname(__file__)
+UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# Static + templates setup
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "uploads")
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+CAREGIVER_PASSWORD = "@dmin123"
 
-@app.get("/")
+
+# ------------------ HOME PAGE ------------------
+@app.get("/", response_class=HTMLResponse)
 def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
-# Recognize: receives a single image file (from webcam capture or upload)
+# ------------------ LOGIN ------------------
+@app.post("/login")
+async def login(password: str = Form(...)):
+    if password == CAREGIVER_PASSWORD:
+        return JSONResponse({"status": "success"})
+    else:
+        return JSONResponse({"status": "error", "message": "Invalid password"})
+
+
+# ------------------ DASHBOARD ------------------
+@app.get("/dashboard", response_class=HTMLResponse)
+def dashboard(request: Request):
+    return templates.TemplateResponse("dashboard.html", {"request": request})
+
+
+# ------------------ RECOGNITION ------------------
+
 @app.post("/recognize")
-async def recognize(file: UploadFile):
+async def recognize(file: UploadFile = File(...)):
     try:
-        temp_path = os.path.join(UPLOAD_FOLDER, file.filename)
-        with open(temp_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        # Read uploaded file directly into numpy array
+        contents = await file.read()
+        np_arr = np.frombuffer(contents, np.uint8)
+        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-        frame = cv2.imread(temp_path)
-        os.remove(temp_path)
+        # Run recognition
+        faces = face_logic.recognize_face(img)
 
-        faces = face_logic.recognize_faces(frame, return_info=True)
-        return JSONResponse({"status": "success", "faces": faces})
+        # Wrap in nested structure for frontend
+        return JSONResponse({"status": "success", "faces": {"faces": faces}})
+
     except Exception as e:
         return JSONResponse({"status": "error", "message": str(e)})
 
 
-# Add person: accepts a file (blob from camera or uploaded image) plus name & relation
+
+
+# ------------------ ADD PERSON ------------------
 @app.post("/add_person")
-async def add_person(file: UploadFile = None, name: str = Form(...), relation: str = Form(...)):
+async def add_person(
+    file: UploadFile = File(...),
+    name: str = Form(...),
+    relation: str = Form(...)
+):
     try:
         if not name or not relation:
             return JSONResponse({"status": "error", "message": "Name and relation required"})
 
-        if not file:
-            return JSONResponse({"status": "error", "message": "Image file required"})
-
         temp_path = os.path.join(UPLOAD_FOLDER, file.filename)
         with open(temp_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        result = face_logic.add_person_from_file(temp_path, name, relation)
-        return JSONResponse(result)
+        filename = face_logic.save_face(temp_path, name, relation)
+        os.remove(temp_path)
+
+        return JSONResponse({"status": "success", "message": f"Person '{name}' added as {relation}", "filename": filename})
+
     except Exception as e:
         return JSONResponse({"status": "error", "message": str(e)})
 
 
-# Reminders: keep same CRUD behavior (load/add/edit/delete)
+# ------------------ REMINDERS ------------------
 @app.get("/get_reminders")
 def get_reminders():
-    return reminder_logic.load_reminders()
+    """Fetch all reminders."""
+    try:
+        return reminder_logic.load_reminders()
+    except Exception as e:
+        return JSONResponse({"status": "error", "message": str(e)})
 
 
 @app.post("/add_reminder")
@@ -89,3 +126,9 @@ def delete_reminder(user: str = Form(...), index: int = Form(...)):
         return JSONResponse({"status": "success", "message": "Reminder deleted"})
     except Exception as e:
         return JSONResponse({"status": "error", "message": str(e)})
+
+
+# ------------------ RUN ------------------
+if __name__ == "__main__":
+    import uvicorn# type: ignore
+    uvicorn.run(app, host="0.0.0.0", port=8000)
