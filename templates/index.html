@@ -4,33 +4,34 @@
   <meta charset="utf-8" />
   <title>Memoraid - Detect Person</title>
   <link rel="stylesheet" href="/static/style.css" />
-  <style>
-    /* small overrides for larger preview */
-    #rec-video { width: 640px; height: 480px; border: 1px solid #ccc; background:#000; }
-    .controls button { margin-right: 6px; }
-    /* simple modal */
-    .modal { display:none; position: fixed; left:0; top:0; right:0; bottom:0; background: rgba(0,0,0,0.5); align-items:center; justify-content:center; }
-    .modal .box { background:#fff; padding:16px; border-radius:6px; width:320px; }
-  </style>
+  <!-- The old inline <style> block has been removed, as all styles are now in style.css -->
 </head>
 <body>
   <h1>🧠👀 Memoraid</h1>
 
-  <!-- Recognize Person (Home) -->
-  <section class="card">
-    <h2>Recognize Person</h2>
-    <video id="rec-video" autoplay playsinline></video>
-    <canvas id="rec-canvas" style="display:none;"></canvas>
+  <!-- This main wrapper is used for the professional, full-width layout -->
+  <main class="container">
+    <section class="card">
+      <!-- Your h2 heading is now correctly included -->
+      <h2>Recognize Person</h2>
 
-    <div class="controls">
-      <button id="rec-start">Start Camera</button>
-      <button id="rec-capture">Capture & Recognize Now</button>
-      <button id="rec-stop">Stop Camera</button>
-      <button id="caregiver-login">Caregiver Login</button>
-    </div>
+      <div class="live-view-wrapper">
+        <video id="rec-video" autoplay playsinline></video>
+        <div id="notification-area"></div>
+      </div>
 
-    <div id="rec-result" class="result-box">No result yet.</div>
-  </section>
+      <canvas id="rec-canvas" style="display:none;"></canvas>
+
+      <div class="controls">
+        <button id="rec-start">Start Camera</button>
+        <button id="rec-capture">Capture & Recognize Now</button>
+        <button id="rec-stop">Stop Camera</button>
+        <button id="caregiver-login">Caregiver Login</button>
+      </div>
+      
+      <div id="rec-result" class="result-box">No result yet.</div>
+    </section>
+  </main> <!-- End of the main container -->
 
   <!-- Caregiver login modal -->
   <div id="login-modal" class="modal">

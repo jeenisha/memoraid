@@ -1,93 +1,33 @@
-import os
+# In main_logic/reminder_logic.py
 import json
-import time
-from datetime import datetime, date
-from threading import Thread
+import os
 
-BASE_DIR = os.path.dirname(__file__)
-REMINDERS_FILE = os.path.join(BASE_DIR, "reminders.json")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+REMINDERS_FILE = os.path.join(BASE_DIR, 'reminders.json')
 
-if not os.path.exists(REMINDERS_FILE):
-    with open(REMINDERS_FILE, "w", encoding="utf-8") as f:
-        json.dump({}, f, indent=4, ensure_ascii=False)
-
-def load_reminders():
+def get_all_reminders():
     try:
-        if os.path.getsize(REMINDERS_FILE) > 0:
-            with open(REMINDERS_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if isinstance(data, dict):
-                    return data
-    except Exception as e:
-        print("Error loading reminders:", e)
-    return {}
+        if os.path.exists(REMINDERS_FILE) and os.path.getsize(REMINDERS_FILE) > 0:
+            with open(REMINDERS_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+    return []
 
-def save_reminders(data):
-    with open(REMINDERS_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
+def save_all_reminders(reminders):
+    with open(REMINDERS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(reminders, f, indent=2, ensure_ascii=False)
 
-def add_reminder(user, time_str, message):
-    data = load_reminders()
-    data.setdefault(user, [])
-    data[user].append({"time": time_str, "message": message})
-    save_reminders(data)
-    print(f"Reminder added for {user} at {time_str}: {message}")
+def add_reminder(new_reminder_object):
+    reminders = get_all_reminders()
+    reminders.append(new_reminder_object)
+    save_all_reminders(reminders)
 
-def delete_reminder(user, index):
-    data = load_reminders()
-    if user in data and 0 <= index < len(data[user]):
-        removed = data[user].pop(index)
-        save_reminders(data)
-        print(f"Deleted reminder: {removed}")
+def delete_reminder_by_id(id_to_delete):
+    reminders = get_all_reminders()
+    original_count = len(reminders)
+    filtered_reminders = [rem for rem in reminders if rem.get('id') != id_to_delete]
+    if len(filtered_reminders) < original_count:
+        save_all_reminders(filtered_reminders)
         return True
     return False
-
-def edit_reminder(user, index, new_time=None, new_message=None):
-    data = load_reminders()
-    if user in data and 0 <= index < len(data[user]):
-        if new_time:
-            data[user][index]["time"] = new_time
-        if new_message:
-            data[user][index]["message"] = new_message
-        save_reminders(data)
-        print(f"Edited reminder: {data[user][index]}")
-        return True
-    return False
-
-# Background reminder checker
-def reminders_checker():
-    triggered_today = set()
-    last_reset = date.today()
-
-    while True:
-        try:
-            today = date.today()
-            if today != last_reset:
-                triggered_today.clear()
-                last_reset = today
-
-            current_reminders = load_reminders()
-            now_str = datetime.now().strftime("%H:%M")
-
-            for user, reminders in current_reminders.items():
-                if not isinstance(reminders, list):
-                    continue
-                for reminder in reminders:
-                    sched_raw = str(reminder.get("time", "")).strip()
-                    msg = str(reminder.get("message", "")).strip()
-
-                    if sched_raw == "" or msg == "" or len(sched_raw) != 5:
-                        continue
-
-                    key = (user, sched_raw)
-                    if sched_raw == now_str and key not in triggered_today:
-                        print(f"Reminder for {user}: {msg} (scheduled {sched_raw}, now {now_str})")
-                        triggered_today.add(key)
-
-            time.sleep(30)
-        except Exception as ex:
-            print("Error in reminders_checker:", ex)
-            time.sleep(30)
-
-# Start background checker thread
-Thread(target=reminders_checker, daemon=True).start()

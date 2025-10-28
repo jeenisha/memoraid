@@ -7,9 +7,9 @@ import shutil
 import cv2# type: ignore
 import numpy as np
 from deepface import DeepFace# type: ignore
-
+import time 
 from main_logic import face_logic, reminder_logic
-
+import traceback
 app = FastAPI(title="Memoraid AI System")
 
 # ------------------ PATH SETUP ------------------
@@ -90,43 +90,48 @@ async def add_person(
     except Exception as e:
         return JSONResponse({"status": "error", "message": str(e)})
 
+# ------------------ REMINDERS (FINAL CORRECTED VERSION) ------------------
 
-# ------------------ REMINDERS ------------------
 @app.get("/get_reminders")
-def get_reminders():
-    """Fetch all reminders."""
-    try:
-        return reminder_logic.load_reminders()
-    except Exception as e:
-        return JSONResponse({"status": "error", "message": str(e)})
-
+def get_reminders_route():
+    return reminder_logic.get_all_reminders()
 
 @app.post("/add_reminder")
-def add_reminder(user: str = Form(...), time: str = Form(...), message: str = Form(...)):
+def add_reminder_route(
+    user: str = Form(...),
+    datetime: str = Form(...),
+    message: str = Form(...)
+):
     try:
-        reminder_logic.add_reminder(user, time, message)
+        if not all([user, datetime, message]):
+            return JSONResponse(status_code=400, content={"status": "error", "message": "Missing required fields"})
+        
+        reminder_id = int(time.time())
+        new_reminder = {
+            "id": reminder_id,
+            "user": user,
+            "datetime": datetime,
+            "message": message
+        }
+        
+        reminder_logic.add_reminder(new_reminder)
         return JSONResponse({"status": "success", "message": "Reminder added"})
     except Exception as e:
-        return JSONResponse({"status": "error", "message": str(e)})
-
-
-@app.post("/edit_reminder")
-def edit_reminder(user: str = Form(...), index: int = Form(...), new_time: str = Form(None), new_message: str = Form(None)):
-    try:
-        reminder_logic.edit_reminder(user, index, new_time, new_message)
-        return JSONResponse({"status": "success", "message": "Reminder edited"})
-    except Exception as e:
-        return JSONResponse({"status": "error", "message": str(e)})
-
-
+        # vvvvv THIS IS THE NEW DEBUGGING CODE vvvvv
+        print("--- A CRITICAL ERROR OCCURRED IN /add_reminder ---")
+        traceback.print_exc() # This will print the full error traceback
+        # ^^^^^ THIS IS THE NEW DEBUGGING CODE ^^^^^
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+    
 @app.post("/delete_reminder")
-def delete_reminder(user: str = Form(...), index: int = Form(...)):
+def delete_reminder_route(id: int = Form(...)):
     try:
-        reminder_logic.delete_reminder(user, index)
-        return JSONResponse({"status": "success", "message": "Reminder deleted"})
+        if reminder_logic.delete_reminder_by_id(id):
+            return JSONResponse({"status": "success", "message": "Reminder deleted"})
+        else:
+            return JSONResponse(status_code=404, content={"status": "error", "message": "Reminder not found"})
     except Exception as e:
-        return JSONResponse({"status": "error", "message": str(e)})
-
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
 
 # ------------------ RUN ------------------
 if __name__ == "__main__":
