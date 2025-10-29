@@ -1,8 +1,4 @@
 {
-    "Jeenisha Bhutekar_0.jpg": {
-        "name": "Jeenisha Bhutekar",
-        "relation": "friendd"
-    },
     "Ankita Devkar_0.jpg": {
         "name": "Ankita Devkar",
         "relation": "Friend"
@@ -15,16 +11,8 @@
         "name": "Gauri Kulkarni",
         "relation": "Friend"
     },
-    "Sakshi Jadhav_0.jpg": {
-        "name": "Sakshi Jadhav",
-        "relation": "Sister"
-    },
     "jeenisha_1.jpg": {
         "name": "jeenisha",
         "relation": "friend"
-    },
-    "Jeenisha_2.jpg": {
-        "name": "Jeenisha",
-        "relation": "Friend"
     }
 }
