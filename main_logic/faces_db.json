@@ -14,5 +14,9 @@
     "jeenisha_1.jpg": {
         "name": "jeenisha",
         "relation": "friend"
+    },
+    "Divya_1.jpg": {
+        "name": "Divya",
+        "relation": "Friend"
     }
 }
