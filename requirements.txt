@@ -1,5 +1,5 @@
 # Core packages
-numpy==1.23.5
+#numpy==1.23.5
 opencv-python==4.7.0.72
 Pillow==9.5.0
 scipy==1.10.1

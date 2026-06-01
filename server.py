@@ -18,7 +18,7 @@ UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Static + templates setup
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory="Static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 CAREGIVER_PASSWORD = "@dmin123"
@@ -136,4 +136,4 @@ def delete_reminder_route(id: int = Form(...)):
 # ------------------ RUN ------------------
 if __name__ == "__main__":
     import uvicorn# type: ignore
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="localhost", port=8001)
