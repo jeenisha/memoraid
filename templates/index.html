@@ -1,51 +1,210 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Memoraid - Detect Person</title>
-  <link rel="stylesheet" href="/static/style.css" />
-  <!-- The old inline <style> block has been removed, as all styles are now in style.css -->
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Memoraid</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css"/>
 </head>
-<body>
-  <h1>🧠👀 Memoraid</h1>
+<body class="patient-page">
 
-  <!-- This main wrapper is used for the professional, full-width layout -->
-  <main class="container">
-    <section class="card">
-      <!-- Your h2 heading is now correctly included -->
-      <h2>Recognize Person</h2>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon">🧠</div>
+      <span class="brand-name">Memoraid</span>
+    </div>
+    <div class="topbar-right">
+      <div class="clock" id="clock"></div>
+      <button class="btn-caregiver" id="caregiver-login">🔒 Caregiver</button>
+    </div>
+  </header>
 
-      <div class="live-view-wrapper">
+  <div id="notification-area" class="notification-area"></div>
+
+  <main class="patient-main">
+
+    <div class="camera-panel">
+      <div class="panel-label">📷 Point camera at a person</div>
+      <div class="camera-box" id="camera-box">
         <video id="rec-video" autoplay playsinline></video>
-        <div id="notification-area"></div>
+        <canvas id="rec-canvas" style="display:none;"></canvas>
+        <!-- Hidden element required by script.js — resultBox target -->
+        <div id="rec-result" style="display:none;"></div>
+        <div class="scan-line" id="scan-line"></div>
+        <div class="cam-corners">
+          <span class="c tl"></span><span class="c tr"></span>
+          <span class="c bl"></span><span class="c br"></span>
+        </div>
+        <div class="cam-idle" id="cam-idle">
+          <div class="cam-idle-icon">📷</div>
+          <p>Press <strong>Start Camera</strong></p>
+        </div>
+        <div class="ai-pill" id="ai-pill">🤖 AI scanning…</div>
       </div>
 
-      <canvas id="rec-canvas" style="display:none;"></canvas>
-
-      <div class="controls">
-        <button id="rec-start">Start Camera</button>
-        <button id="rec-capture">Capture & Recognize Now</button>
-        <button id="rec-stop">Stop Camera</button>
-        <button id="caregiver-login">Caregiver Login</button>
+      <div class="cam-btns">
+        <button class="big-btn btn-start" id="rec-start">▶ Start Camera</button>
+        <button class="big-btn btn-capture" id="rec-capture">📸 Capture Now</button>
+        <button class="big-btn btn-stop" id="rec-stop">⏹ Stop</button>
       </div>
-      
-      <div id="rec-result" class="result-box">No result yet.</div>
-    </section>
-  </main> <!-- End of the main container -->
+    </div>
 
-  <!-- Caregiver login modal -->
-  <div id="login-modal" class="modal">
-    <div class="box">
-      <h3>Caregiver Login</h3>
-      <input id="login-password" type="password" placeholder="Password" />
-      <div style="margin-top:10px;">
-        <button id="login-submit">Login</button>
-        <button id="login-cancel">Cancel</button>
+    <div class="result-panel">
+      <div class="panel-label">👤 Who is this person?</div>
+
+      <div class="person-card" id="person-card">
+        <div class="person-avatar" id="person-avatar">?</div>
+        <div class="person-details" id="person-details">
+          <div class="person-name" id="person-name">Waiting…</div>
+          <div class="person-relation" id="person-relation">Point the camera at someone</div>
+          <div class="confidence-wrap" id="confidence-wrap" style="display:none;">
+            <span class="conf-label">Match</span>
+            <div class="conf-track"><div class="conf-bar" id="conf-bar"></div></div>
+            <span class="conf-pct" id="conf-pct"></span>
+          </div>
+        </div>
       </div>
-      <div id="login-msg" style="color:rgb(255, 0, 0); margin-top:8px;"></div>
+
+      <div class="voice-card" id="voice-card">
+        <div class="voice-icon">🔊</div>
+        <div class="voice-bars" id="voice-bars">
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="voice-text" id="voice-text">Voice assistant ready</div>
+      </div>
+
+      <div class="reminders-label">⏰ Today's Reminders</div>
+      <div class="reminders-mini" id="reminders-mini">
+        <div class="rem-empty-small">No reminders yet</div>
+      </div>
+    </div>
+
+  </main>
+
+  <div id="login-modal" class="modal-wrap">
+    <div class="modal-box">
+      <div class="modal-title">🔒 Caregiver Login</div>
+      <p class="modal-sub">Enter your password to access the dashboard</p>
+      <input id="login-password" type="password" class="modal-input" placeholder="Password…"/>
+      <div id="login-msg" class="login-error"></div>
+      <div class="modal-btns">
+        <button class="modal-btn-cancel" id="login-cancel">Cancel</button>
+        <button class="modal-btn-submit" id="login-submit">Login →</button>
+      </div>
     </div>
   </div>
 
   <script src="/static/script.js"></script>
+  <script>
+    // Clock
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock').textContent = now.toLocaleString('en-IN', { weekday:'long', hour:'numeric', minute:'2-digit', hour12:true });
+    }
+    updateClock(); setInterval(updateClock, 30000);
+
+    // Camera state UI
+    document.getElementById('rec-start').addEventListener('click', () => {
+      document.getElementById('cam-idle').style.display = 'none';
+      document.getElementById('scan-line').style.display = 'block';
+      document.getElementById('ai-pill').style.display = 'flex';
+    });
+    document.getElementById('rec-stop').addEventListener('click', () => {
+      document.getElementById('cam-idle').style.display = 'flex';
+      document.getElementById('scan-line').style.display = 'none';
+      document.getElementById('ai-pill').style.display = 'none';
+      resetPersonCard();
+    });
+
+    // processFaces UI updater — called by script.js after recognition
+    // We override the hidden resultBox's setter via MutationObserver
+    // so we react whenever script.js writes to #rec-result
+    const resultObserver = new MutationObserver(() => {
+      const text = document.getElementById('rec-result').innerText.trim();
+      if (!text || text === 'No result yet.' || text === 'No faces detected.') {
+        resetPersonCard(); return;
+      }
+      if (text.startsWith('Unknown')) {
+        document.getElementById('person-avatar').textContent = '?';
+        document.getElementById('person-avatar').style.background = '#F0EDEA';
+        document.getElementById('person-avatar').style.color = '#999';
+        document.getElementById('person-name').textContent = 'Unknown Person';
+        document.getElementById('person-relation').textContent = 'Not in your contacts';
+        document.getElementById('person-card').classList.remove('card-identified');
+        document.getElementById('confidence-wrap').style.display = 'none';
+        return;
+      }
+      // Parse "Name (Relation)" from text
+      const match = text.match(/^(.+?)\s*\((.+?)\)/);
+      if (match) {
+        const name = match[1].trim();
+        const relation = match[2].trim();
+        const initials = name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+        const avatarEl = document.getElementById('person-avatar');
+        avatarEl.textContent = initials;
+        avatarEl.style.background = '#FFF0C8';
+        avatarEl.style.color = '#A06010';
+        document.getElementById('person-name').textContent = name;
+        document.getElementById('person-relation').textContent = '👥 ' + relation;
+        document.getElementById('person-card').classList.add('card-identified');
+        document.getElementById('confidence-wrap').style.display = 'none';
+        speak('This is ' + name + ', your ' + relation);
+        animateVoice('Saying: "This is ' + name + '"');
+      }
+    });
+    resultObserver.observe(document.getElementById('rec-result'), { childList: true, subtree: true, characterData: true });
+
+    function resetPersonCard() {
+      document.getElementById('person-name').textContent = 'Waiting…';
+      document.getElementById('person-relation').textContent = 'Point the camera at someone';
+      document.getElementById('person-avatar').textContent = '?';
+      document.getElementById('person-avatar').style.background = '#F5F0EB';
+      document.getElementById('person-avatar').style.color = '#BBB';
+      document.getElementById('person-card').classList.remove('card-identified');
+      document.getElementById('confidence-wrap').style.display = 'none';
+    }
+
+    function speak(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'en-IN'; u.rate = 0.85;
+        window.speechSynthesis.speak(u);
+      }
+    }
+
+    let voiceTimer = null;
+    function animateVoice(label) {
+      document.getElementById('voice-bars').classList.add('active');
+      document.getElementById('voice-text').textContent = label;
+      if (voiceTimer) clearTimeout(voiceTimer);
+      voiceTimer = setTimeout(() => {
+        document.getElementById('voice-bars').classList.remove('active');
+        document.getElementById('voice-text').textContent = 'Voice assistant ready';
+      }, 3500);
+    }
+
+
+    const _origDoRec = window.doRecognitionOnce;
+
+    // Mini reminders loader
+    async function loadMiniReminders() {
+      try {
+        const rems = await fetch('/get_reminders').then(r => r.json());
+        const now = new Date();
+        const upcoming = rems.filter(r => new Date(r.datetime) > now)
+          .sort((a,b) => new Date(a.datetime)-new Date(b.datetime)).slice(0,3);
+        const el = document.getElementById('reminders-mini');
+        if (!upcoming.length) { el.innerHTML = '<div class="rem-empty-small">No upcoming reminders</div>'; return; }
+        el.innerHTML = upcoming.map(r => {
+          const t = new Date(r.datetime).toLocaleString('en-IN',{dateStyle:'short',timeStyle:'short'});
+          return `<div class="rem-mini-item"><span class="rem-mini-dot"></span><div class="rem-mini-body"><strong>${r.user}</strong><span>${r.message}</span></div><div class="rem-mini-time">${t}</div></div>`;
+        }).join('');
+      } catch(e) {}
+    }
+    loadMiniReminders(); setInterval(loadMiniReminders, 30000);
+  </script>
 </body>
 </html>

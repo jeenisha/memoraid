@@ -1,60 +1,297 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Memoraid - Caregiver Dashboard</title>
-  <link rel="stylesheet" href="/static/style.css" />
-  <style>
-    video#add-video { width: 320px; height: 240px; border: 1px solid #ccc; background:#000; }
-  </style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Memoraid — Caregiver Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css"/>
 </head>
-<body>
-  <h1>Caregiver Dashboard</h1>
+<body class="dashboard-page">
 
-  <!-- Add Person -->
-  <section class="card">
-    <h2>Add Person</h2>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon">🧠</div>
+      <span class="brand-name">Memoraid</span>
+    </div>
+    <div class="topbar-right">
+      <span class="caregiver-badge">Caregiver Mode</span>
+      <a href="/" class="btn-caregiver">← Patient View</a>
+    </div>
+  </header>
 
-    <div class="sub">
-      <h3>Upload Image</h3>
-      <input id="upload-name" placeholder="Name" />
-      <input id="upload-relation" placeholder="Relation" />
-      <input id="upload-file" type="file" accept="image/*" />
-      <button id="upload-add">Add Person (Upload)</button>
-      <div id="upload-msg" class="result-box"></div>
+  <div id="toast-area" class="toast-area"></div>
+
+  <main class="dash-main">
+
+    <div class="dash-header">
+      <h1 class="dash-title">Caregiver Dashboard</h1>
+      <p class="dash-sub">Manage who the patient knows and their daily reminders</p>
     </div>
 
-    <hr/>
+    <div class="dash-grid">
 
-    <div class="sub">
-      <h3>Add via Camera</h3>
-      <video id="add-video" autoplay playsinline></video>
-      <canvas id="add-canvas" style="display:none;"></canvas>
+      <!-- ADD PERSON -->
+      <section class="dash-card">
+        <div class="dash-card-head">
+          <div class="dash-card-icon" style="background:#E8F4FD;">👤</div>
+          <div>
+            <h2 class="dash-card-title">Add a Person</h2>
+            <p class="dash-card-sub">Register someone the patient should recognise</p>
+          </div>
+        </div>
 
-      <input id="cam-name" placeholder="Name" />
-      <input id="cam-relation" placeholder="Relation" />
-      <div class="controls">
-        <button id="add-open">Open Camera</button>
-        <button id="add-capture">Capture Image</button>
-        <button id="add-close">Close Camera</button>
-        <button id="add-submit">Add Person (From Camera)</button>
-      </div>
+        <div class="method-tabs">
+          <button class="tab-btn tab-active" id="tab-upload-btn" onclick="switchTab('upload')">📤 Upload Photo</button>
+          <button class="tab-btn" id="tab-camera-btn" onclick="switchTab('camera')">📷 Use Camera</button>
+        </div>
 
-      <div id="added-preview" class="result-box">No preview</div>
+        <!-- Upload method -->
+        <div id="tab-upload">
+          <div class="upload-zone" id="upload-zone" onclick="document.getElementById('upload-file').click()">
+            <div class="upload-zone-inner" id="upload-zone-inner">
+              <div style="font-size:36px;">📁</div>
+              <p>Tap to choose a photo</p>
+              <small>JPG or PNG</small>
+            </div>
+            <div id="upload-preview-wrap" style="display:none;">
+              <img id="upload-preview-img" src="" alt="Preview" class="upload-preview-img"/>
+              <button class="remove-preview-btn" onclick="event.stopPropagation();clearUpload()">✕ Remove</button>
+            </div>
+            <input type="file" id="upload-file" accept="image/*" style="display:none;"/>
+          </div>
+          <div class="field-row">
+            <div class="field-group">
+              <label class="field-label">Full Name</label>
+              <input id="upload-name" type="text" class="field-input" placeholder="e.g. Priya Sharma"/>
+            </div>
+            <div class="field-group">
+              <label class="field-label">Relationship</label>
+              <input id="upload-relation" type="text" class="field-input" placeholder="e.g. Daughter"/>
+            </div>
+          </div>
+          <div id="upload-msg" class="form-msg"></div>
+          <button class="action-btn btn-blue" id="upload-add">✓ Save Person</button>
+        </div>
+
+        <!-- Camera method -->
+        <div id="tab-camera" style="display:none;">
+          <div class="cam-add-box">
+            <div class="cam-add-idle" id="cam-add-idle">📷 Open camera to capture</div>
+            <video id="add-video" autoplay playsinline style="display:none; width:100%; border-radius:12px; max-height:180px; object-fit:cover;"></video>
+            <canvas id="add-canvas" style="display:none;"></canvas>
+            <div id="added-preview" class="capture-result"></div>
+          </div>
+          <div class="cam-mini-btns">
+            <button class="mini-btn" id="add-open">▶ Open</button>
+            <button class="mini-btn btn-amber-mini" id="add-capture">📸 Capture</button>
+            <button class="mini-btn" id="add-close">⏹ Stop</button>
+          </div>
+          <div class="field-row">
+            <div class="field-group">
+              <label class="field-label">Full Name</label>
+              <input id="cam-name" type="text" class="field-input" placeholder="e.g. Rahul Verma"/>
+            </div>
+            <div class="field-group">
+              <label class="field-label">Relationship</label>
+              <input id="cam-relation" type="text" class="field-input" placeholder="e.g. Son"/>
+            </div>
+          </div>
+          <button class="action-btn btn-blue" id="add-submit">✓ Save Person</button>
+        </div>
+      </section>
+
+      <!-- REMINDERS -->
+      <section class="dash-card">
+        <div class="dash-card-head">
+          <div class="dash-card-icon" style="background:#FFF3DC;">🔔</div>
+          <div>
+            <h2 class="dash-card-title">Reminders</h2>
+            <p class="dash-card-sub">Set daily tasks and alerts for the patient</p>
+          </div>
+        </div>
+
+        <div class="reminder-form">
+          <div class="field-row">
+            <div class="field-group">
+              <label class="field-label">Patient Name</label>
+              <input id="rem-user" type="text" class="field-input" placeholder="e.g. Ramesh"/>
+            </div>
+            <div class="field-group">
+              <label class="field-label">Date &amp; Time</label>
+              <input id="rem-datetime" type="datetime-local" class="field-input"/>
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Message</label>
+            <input id="rem-message" type="text" class="field-input" placeholder="e.g. Take blood pressure tablet"/>
+          </div>
+          <button class="action-btn btn-amber" id="rem-add">🔔 Add Reminder</button>
+        </div>
+
+        <div class="rem-list-label">Upcoming reminders</div>
+        <div id="rem-list" class="rem-list">
+          <div class="rem-empty">No reminders yet</div>
+        </div>
+      </section>
+
     </div>
-  </section>
+  </main>
 
-  <!-- Reminders -->
-  <section class="card">
-    <h2>Reminders</h2>
-    <input id="rem-user" placeholder="User" />
-    <input id="rem-datetime" type="datetime-local" />
-    <input id="rem-message" placeholder="Message" />
-    <button id="rem-add">Add Reminder</button>
+  <script src="/static/script.js"></script>
+  <script>
+    function switchTab(tab) {
+      document.getElementById('tab-upload').style.display = tab==='upload' ? 'block' : 'none';
+      document.getElementById('tab-camera').style.display = tab==='camera' ? 'block' : 'none';
+      document.getElementById('tab-upload-btn').classList.toggle('tab-active', tab==='upload');
+      document.getElementById('tab-camera-btn').classList.toggle('tab-active', tab==='camera');
+    }
 
-    <div id="rem-list" class="result-box"></div>
-  </section>
+    document.getElementById('upload-file').addEventListener('change', function() {
+      if (!this.files || !this.files[0]) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        document.getElementById('upload-preview-img').src = e.target.result;
+        document.getElementById('upload-zone-inner').style.display = 'none';
+        document.getElementById('upload-preview-wrap').style.display = 'block';
+      };
+      reader.readAsDataURL(this.files[0]);
+    });
 
-  <script  src="/static/script.js"></script>
+    function clearUpload() {
+      document.getElementById('upload-file').value = '';
+      document.getElementById('upload-preview-img').src = '';
+      document.getElementById('upload-zone-inner').style.display = 'flex';
+      document.getElementById('upload-preview-wrap').style.display = 'none';
+    }
+
+    // Drag & drop
+    const zone = document.getElementById('upload-zone');
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.borderColor='#2C5F8A'; });
+    zone.addEventListener('dragleave', () => zone.style.borderColor='');
+    zone.addEventListener('drop', e => {
+      e.preventDefault(); zone.style.borderColor='';
+      const f = e.dataTransfer.files[0];
+      if (f && f.type.startsWith('image/')) {
+        const dt = new DataTransfer(); dt.items.add(f);
+        document.getElementById('upload-file').files = dt.files;
+        document.getElementById('upload-file').dispatchEvent(new Event('change'));
+      }
+    });
+
+    // Show camera preview on capture
+    const origAddCapture = document.getElementById('add-capture');
+    origAddCapture.addEventListener('click', () => {
+      setTimeout(() => {
+        const canvas = document.getElementById('add-canvas');
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        if (dataUrl && dataUrl.length > 100) {
+          document.getElementById('added-preview').innerHTML =
+            `<div style="position:relative;"><img src="${dataUrl}" style="width:100%;border-radius:10px;max-height:150px;object-fit:cover;"/><div class="captured-badge">✓ Captured</div></div>`;
+          document.getElementById('cam-add-idle').style.display = 'none';
+          document.getElementById('add-video').style.display = 'none';
+        }
+      }, 150);
+    });
+
+    document.getElementById('add-open').addEventListener('click', () => {
+      document.getElementById('cam-add-idle').style.display = 'none';
+      document.getElementById('add-video').style.display = 'block';
+      document.getElementById('added-preview').innerHTML = '';
+    });
+
+    document.getElementById('add-close').addEventListener('click', () => {
+      document.getElementById('cam-add-idle').style.display = 'flex';
+      document.getElementById('add-video').style.display = 'none';
+      document.getElementById('added-preview').innerHTML = '';
+    });
+
+    // Toast
+    window.showToast = function(msg, type='success') {
+      const area = document.getElementById('toast-area');
+      const t = document.createElement('div');
+      t.className = 'toast toast-' + type;
+      t.textContent = (type==='success'?'✓ ':'✕ ') + msg;
+      area.appendChild(t);
+      setTimeout(() => t.classList.add('show'), 10);
+      setTimeout(() => { t.classList.remove('show'); setTimeout(()=>t.remove(),300); }, 3500);
+    };
+
+    // Patch reminder load to use new card style
+    const _origLoad = window.loadReminders;
+    async function loadRemindersStyled() {
+      const res = await fetch('/get_reminders');
+      const rems = await res.json();
+      const el = document.getElementById('rem-list');
+      if (!rems.length) { el.innerHTML = '<div class="rem-empty">No reminders yet</div>'; return; }
+      rems.sort((a,b) => new Date(a.datetime)-new Date(b.datetime));
+      const now = new Date();
+      el.innerHTML = rems.map(r => {
+        const d = new Date(r.datetime);
+        const past = d < now;
+        const timeStr = d.toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});
+        return `<div class="rem-card ${past?'rem-past':''}">
+          <div class="rem-card-left">
+            <div class="rem-card-user">${r.user}</div>
+            <div class="rem-card-msg">${r.message}</div>
+            <div class="rem-card-time ${past?'time-past':''}">${timeStr}${past?' · Past':''}</div>
+          </div>
+          <button class="delete-btn" data-id="${r.id}">🗑 Delete</button>
+        </div>`;
+      }).join('');
+    }
+    loadRemindersStyled();
+
+    // Re-wire add/delete to use styled loader + toasts
+    document.getElementById('rem-add').addEventListener('click', async () => {
+      const user = document.getElementById('rem-user').value.trim();
+      const dt   = document.getElementById('rem-datetime').value;
+      const msg  = document.getElementById('rem-message').value.trim();
+      if (!user || !dt || !msg) { showToast('Please fill all fields', 'error'); return; }
+      const fd = new FormData();
+      fd.append('user', user); fd.append('datetime', dt); fd.append('message', msg);
+      const res = await fetch('/add_reminder',{method:'POST',body:fd});
+      const j = await res.json();
+      if (j.status==='success') {
+        document.getElementById('rem-user').value = '';
+        document.getElementById('rem-datetime').value = '';
+        document.getElementById('rem-message').value = '';
+        showToast('Reminder added!');
+        loadRemindersStyled();
+      } else showToast(j.message||'Error','error');
+    }, true);
+
+    document.getElementById('rem-list').addEventListener('click', async e => {
+      const btn = e.target.closest('.delete-btn');
+      if (!btn) return;
+      if (!confirm('Delete this reminder?')) return;
+      const fd = new FormData(); fd.append('id', btn.dataset.id);
+      const res = await fetch('/delete_reminder',{method:'POST',body:fd});
+      const j = await res.json();
+      if (j.status==='success') { showToast('Reminder deleted'); loadRemindersStyled(); }
+      else showToast('Could not delete','error');
+    }, true);
+
+    document.getElementById('upload-add').addEventListener('click', async () => {
+      const name = document.getElementById('upload-name').value.trim();
+      const rel  = document.getElementById('upload-relation').value.trim();
+      const file = document.getElementById('upload-file');
+      const msg  = document.getElementById('upload-msg');
+      if (!name||!rel) { msg.textContent='Name and relationship required'; msg.style.color='#C0392B'; return; }
+      if (!file.files||!file.files[0]) { msg.textContent='Please choose a photo'; msg.style.color='#C0392B'; return; }
+      msg.textContent='Saving…'; msg.style.color='#888';
+      const fd = new FormData();
+      fd.append('name',name); fd.append('relation',rel); fd.append('file',file.files[0]);
+      const res = await fetch('/add_person',{method:'POST',body:fd});
+      const j = await res.json();
+      if (j.status==='success') {
+        showToast(name+' added successfully!');
+        document.getElementById('upload-name').value='';
+        document.getElementById('upload-relation').value='';
+        clearUpload(); msg.textContent='';
+      } else { msg.textContent=j.message||'Error'; msg.style.color='#C0392B'; }
+    }, true);
+  </script>
 </body>
 </html>
