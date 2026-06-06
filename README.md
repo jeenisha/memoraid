@@ -8,7 +8,7 @@
 ## 📸 Screenshots
 
 ### Patient View — Face Recognition
-![Patient Assistant](screenshots/patient%20assistant.png)
+![Patient Assistant](screenshots/Patient%20assistant.png)
 
 ### Caregiver Login
 ![Caregiver Login](screenshots/caregiver%20login.png)
