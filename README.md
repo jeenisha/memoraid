@@ -266,13 +266,6 @@ Pull requests are welcome! For major changes, please open an issue first to disc
 
 ---
 
-## 👩‍💻 Team
-
-Built with ❤️ for **Smart India Hackathon**
-
-| Name | Role |
-|---|---|
-| Jeenisha | Developer & Designer |
 
 ---
 
@@ -282,7 +275,7 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 
 ---
 
-## 🙏 Acknowledgements
+## Acknowledgements
 
 - [DeepFace](https://github.com/serengil/deepface) — face recognition framework
 - [FastAPI](https://fastapi.tiangolo.com/) — modern Python web framework
