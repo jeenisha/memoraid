@@ -1,6 +1,6 @@
 # 🧠 Memoraid — AI Memory Support for People with Dementia
 
-> **Smart India Hackathon Project**  
+ 
 > An AI-powered assistive tool that helps dementia patients recognize faces and stay on top of daily reminders — built with empathy, designed for the elderly.
 
 ---
